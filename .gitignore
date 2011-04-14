@@ -31,5 +31,9 @@ deploy/
 docs/
 tools/FAKE/templates/
 test/
+<<<<<<< HEAD
 *_Spliced.*
 *.vsp
+=======
+*_Spliced.*
+>>>>>>> added .gitignore
