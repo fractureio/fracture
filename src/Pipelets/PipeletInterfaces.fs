@@ -1,5 +1,9 @@
 ﻿namespace Pipelets
 
+    open System.Reflection
+    [<assembly: AssemblyVersion("0.1.0.*")>] 
+    do()
+    
     [<Interface>]
     type IPipeletInput<'a> =
         abstract Insert: 'a -> unit 

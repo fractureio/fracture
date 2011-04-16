@@ -1,6 +1,8 @@
 ﻿namespace Pipelets
+    open System
+    open System.Reflection
     open System.Collections.Concurrent
-        
+    
     type pipelet<'a,'b>(processor, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, ?overflow, ?capacity, ?blockingTime) =
         let processor = processor
         let router = router
