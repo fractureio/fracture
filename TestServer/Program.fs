@@ -2,7 +2,14 @@
 open flack
 
 try
-    use server = new TcpListener(10, 1, 1, 128, 10003, 1000)
+    let display a b = 
+        let xx = a |> printfn "%s: %A"
+        b |> xx
+
+    let displaySend b = display "Sent: " b
+    let displayReceive b = display "Receive: " b
+     
+    use server = new TcpListener(10, 1, 1, 128, 10003, 1000, displaySend , displayReceive )
     server.start ()
 with
 |   e -> 

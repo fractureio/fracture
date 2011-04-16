@@ -6,8 +6,12 @@
     open System.Collections.Concurrent
     open System.Threading
     open SocketExtensions
+    
+    open System.Reflection
+    [<assembly: AssemblyVersion("0.1.0.*")>] 
+    do()
             
-    type TcpListener(maxaccepts, maxsends, maxreceives, size, port, backlog) as this =
+    type TcpListener(maxaccepts, maxsends, maxreceives, size, port, backlog, sent, received ) as this =
 
         let createTcpSocket() =
             new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
@@ -34,51 +38,18 @@
             pool
 
         let acceptPool = initPool (maxaccepts, this.acceptcompleted)
-        let newConnection socket = new Connection (maxreceives, maxsends, size, socket)
-        let testMessage = Array.init<byte> 128 (fun _ -> 1uy)
-        let header = Array.init<byte> 1 (fun _ -> 1uy)
+        let newConnection socket = new Connection (maxreceives, maxsends, size, socket, sent, received)
+
         let mutable disposed = false
         
-        //mutable state from original
-        let mutable anyErrors = false
-        let mutable requestCount = 0
-        let mutable numWritten = 0
-
-        //async code from original
-        let asyncWriteStockQuote(connection:Connection) = async {
-            do! Async.Sleep 100
-            connection.Send(testMessage)
-            Interlocked.Increment(&numWritten) |> ignore }
-        
-        //async code from original
-        let asyncServiceClient (client: Connection) = async {
-            client.Send(header)
-            while true do
-                do! asyncWriteStockQuote(client) }
-
-        let startSending connection = 
-            Async.Start (async { 
-                try 
-                    use _holder = connection
-                    do! asyncServiceClient connection 
-                with e -> 
-                    if not(anyErrors) then
-                        anyErrors <- true
-                        Console.WriteLine("server ERROR")
-                    raise e
-                } )
-
-        let reportConnections() = 
-            Interlocked.Increment(&requestCount) |> ignore
-            if requestCount % 50 = 0 then 
-                requestCount |> printfn "%A Clients accepted"
-
         let cleanUp() = 
             if not disposed then
                 disposed <- true
                 listeningSocket.Shutdown(SocketShutdown.Both)
                 listeningSocket.Disconnect(false)
                 listeningSocket.Close()
+
+        member this.Clients = new System.Collections.Concurrent.ConcurrentDictionary<IPEndPoint, Connection>(4, 1000)
 
         member this.acceptcompleted (args : SocketAsyncEventArgs) =
             try
@@ -87,16 +58,18 @@
                     match args.SocketError with
                     | SocketError.Success -> 
                         listeningSocket.AcceptAsyncSafe( this.acceptcompleted, acceptPool.Take())
+                        
                         //create new connection
                         let connection = newConnection args.AcceptSocket
+                        
+                        //add client to dictionary
+                        let success = this.Clients.TryAdd(args.AcceptSocket.RemoteEndPoint :?> IPEndPoint, connection)
+                        if not success then 
+                            failwith "client could not be added"
+                        else
+                        //start the new connection
                         connection.Start()
-
-                        //update stats
-                        reportConnections()
-
-                        //async start of messages to client
-                        startSending connection
-
+                        
                         //remove the AcceptSocket because we will be reusing args
                         args.AcceptSocket <- null 
                     | _ -> args.SocketError.ToString() |> printfn "socket error on accept: %s"         
@@ -104,15 +77,19 @@
             finally
                 acceptPool.Add(args)
 
+        member this.Send(client, msg:byte[]) =
+            let success, client = this.Clients.TryGetValue(client)
+            match success with
+            | true -> client.Send(msg)
+            | _ ->  failwith "could not find client %"
+
         member this.start () =   
             listeningSocket.AcceptAsyncSafe( this.acceptcompleted, acceptPool.Take())
-            while true do
-            Thread.Sleep 1000
-            let count = Interlocked.Exchange(&numWritten, 0)
-            count |> printfn "Quotes per sec: %A"
 
         member this.Close() =
             cleanUp()
 
         interface IDisposable with
             member this.Dispose() = cleanUp()
+
+        new(port, sent, received) = new TcpListener(10,10,10, 1024, port, 100, sent, received)

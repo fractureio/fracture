@@ -7,7 +7,7 @@
     open System.Threading
     open SocketExtensions
 
-    type Connection(maxreceives, maxsends, size, socket:Socket) as this =
+    type Connection(maxreceives, maxsends, size, socket:Socket, ?received: byte[] -> unit, ?sent:byte[] -> unit ) as this =
         let socket = socket
         let maxreceives = maxreceives
         let maxsends = maxsends
@@ -15,6 +15,13 @@
         let receivePool = new BocketPool(maxreceives, size, this.receiveCompleted) 
         let mutable disposed = false
         let mutable anyErrors = false
+
+        let runIfSome a b =
+            match b with
+            | Some(b) -> a |> b
+            | None -> ()
+
+        let ( |?> ) = runIfSome
 
         let cleanUp() = 
             if not disposed then
@@ -30,32 +37,43 @@
 
         member this.Stop() =
             socket.Close(2)
-
-        member this.receiveCompleted (args: SocketAsyncEventArgs) =
+        
+        member private this.receiveCompleted (args: SocketAsyncEventArgs) =
             try
                 match args.LastOperation with
                 | SocketAsyncOperation.Receive ->
                     match args.SocketError with
                     | SocketError.Success ->
+                        //get on with the next receive
                         socket.ReceiveAsyncSafe( this.receiveCompleted, receivePool.CheckOut())
+                        //process received data
                         let data = Array.create args.BytesTransferred 0uy
                         Buffer.BlockCopy(args.Buffer, args.Offset, data, 0, data.Length)
+                        //get the clients endpoint
                         let client = args.RemoteEndPoint
+                        // remove the endpoint from the saea ,push back
                         args.RemoteEndPoint <- null
-                        data |> printfn "received data: %A"  
+                        //notify data received
+                        data |?> received 
                     | _ -> args.SocketError.ToString() |> printfn "socket error on receive: %s"         
                 | _ -> failwith "unknown operation, should be receive"
             finally
                 receivePool.CheckIn(args)
         
-
-        member this.sendCompleted (args: SocketAsyncEventArgs) =
+        member private this.sendCompleted (args: SocketAsyncEventArgs) =
             try
                 match args.LastOperation with
                 | SocketAsyncOperation.Send ->
                     match args.SocketError with
                     | SocketError.Success ->
-                        ()
+                         //report on the sending...
+                          let sentData = Array.create args.BytesTransferred 0uy
+                          Buffer.BlockCopy(args.Buffer, args.Offset, sentData, 0, sentData.Length);
+                          //notify data sent
+                          sentData |?> sent
+                          //get on with the next send
+                          socket.SendAsyncSafe( this.sendCompleted, sendPool.CheckOut())
+
                     | SocketError.NoBufferSpaceAvailable
                     | SocketError.IOPending
                     | SocketError.WouldBlock ->

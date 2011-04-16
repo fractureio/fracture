@@ -33,7 +33,7 @@ let clientAsync clientIndex =
             //raise e
     }
    
-Async.Parallel [ for i in 1 .. 50 -> clientAsync i ] 
+Async.Parallel [ for i in 1 .. 1 -> clientAsync i ] 
     |> Async.Ignore 
     |> Async.Start
 System.Console.ReadKey() |> ignore

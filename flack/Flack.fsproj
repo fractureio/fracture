@@ -44,7 +44,6 @@
     <Compile Include="BocketPool.fs" />
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="Connection.fs" />
-    <Compile Include="TcpListerner_Orig.fs" />
     <Compile Include="TcpListner.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -53,6 +52,9 @@
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
+    <Reference Include="Pipelets">
+      <HintPath>..\lib\Pipelets.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
