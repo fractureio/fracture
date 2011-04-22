@@ -6,9 +6,8 @@
     open System.Collections.Concurrent
     open System.Threading
     open SocketExtensions
-    open utility
 
-    type Connection(maxreceives, maxsends, size, socket, ?received, ?sent, ?disconnected ) as this =
+    type Connection(maxreceives, maxsends, size, socket, disconnected, sent, received ) as this =
         let socket:Socket = socket
         let maxreceives = maxreceives
         let maxsends = maxsends
@@ -43,9 +42,9 @@
                         let data:byte[] = Array.zeroCreate args.BytesTransferred
                         Buffer.BlockCopy(args.Buffer, args.Offset, data, 0, data.Length)
                         //notify data received
-                        (data, socket.RemoteEndPoint :?> IPEndPoint) |?> received 
+                        (data, socket.RemoteEndPoint :?> IPEndPoint) |> received 
                     | _ -> 
-                        socket.RemoteEndPoint :?> IPEndPoint |?> disconnected
+                        socket.RemoteEndPoint :?> IPEndPoint |> disconnected
                 | _ -> failwith "unknown operation, should be receive"
             finally
                 receivePool.CheckIn(args)
@@ -59,7 +58,7 @@
                           let sentData:byte[] = Array.zeroCreate args.BytesTransferred
                           Buffer.BlockCopy(args.Buffer, args.Offset, sentData, 0, sentData.Length);
                           //notify data sent
-                          (sentData, socket.RemoteEndPoint :?> IPEndPoint) |?> sent
+                          (sentData, socket.RemoteEndPoint :?> IPEndPoint) |> sent
                           //on with the next send
                           socket.SendAsyncSafe( this.sendCompleted, sendPool.CheckOut())
                     | SocketError.NoBufferSpaceAvailable

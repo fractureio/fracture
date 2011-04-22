@@ -3,26 +3,24 @@ open System.Net
 open flack
 
 try
-    let display a b = 
+    let display a b =
         let xx = a |> printfn "%s: %A"
         b |> xx
 
-    let displaySend b  = display  b
+    use server = new TcpListener(10, 2, 2, 128, 10003, 1000)
 
-    let displayReceive b = display "Receive: " b
+    server.Sent |> Observable.add (fun x -> display "Sent" x)
 
-    let endpointConnected (endpoint: IPEndPoint)=
-        printfn "endpoint %A: Connected" endpoint
+    server.Received |> Observable.add (fun x -> display "Received" x)
 
-    let endpointDisonnected (endpoint: IPEndPoint)=
-        printfn "endpoint %A: Disconnected" endpoint
+    server.Connected |> Observable.add (fun x -> printfn "endpoint %A: Connected" x)
 
-    
-    use server = new TcpListener(10, 2, 2, 128, 10003, 1000, displaySend, displayReceive, Some endpointConnected, endpointDisonnected )
+    server.Disconnected |> Observable.add (fun x -> printfn "endpoint %A: Disconnected" x)
+
     server.start ()
     "Server Running, press a key to exit." |> printfn "%s"
     Console.ReadKey() |> ignore
 with
-|   e -> 
+|   e ->
     printfn "%s" e.Message
     Console.ReadKey() |> ignore
