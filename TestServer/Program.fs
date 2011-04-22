@@ -7,7 +7,7 @@ try
         let xx = a |> printfn "%s: %A"
         b |> xx
 
-    let displaySend b = display "Sent: " b
+    let displaySend b  = display  b
 
     let displayReceive b = display "Receive: " b
 
@@ -18,7 +18,7 @@ try
         printfn "endpoint %A: Disconnected" endpoint
 
     
-    use server = new TcpListener(10, 2, 2, 128, 10003, 1000, displaySend , displayReceive, Some endpointConnected, endpointDisonnected )
+    use server = new TcpListener(10, 2, 2, 128, 10003, 1000, displaySend, displayReceive, Some endpointConnected, endpointDisonnected )
     server.start ()
     "Server Running, press a key to exit." |> printfn "%s"
     Console.ReadKey() |> ignore
