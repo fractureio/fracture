@@ -2,7 +2,7 @@
 open System.Net.Sockets
 
 let quoteSize = 128
-
+let testMessage = Array.init<byte> 128 (fun _ -> 1uy)
 type System.Net.Sockets.TcpClient with
     member client.AsyncConnect(server, port, clientIndex) = 
         Async.FromBeginEnd(server, port,(client.BeginConnect : IPAddress * int * _ * _ -> _), client.EndConnect)
@@ -12,18 +12,20 @@ let clientRequestQuoteStream (clientIndex, server, port:int) =
         let client = new System.Net.Sockets.TcpClient()
         do!  client.AsyncConnect(server,port, clientIndex)
         let stream = client.GetStream()
-        let! header = stream.AsyncRead 1 // read header
+        //let! header = stream.AsyncRead 1 // read header
         while true do
-            let! bytes = stream.AsyncRead quoteSize
-            if Array.length bytes <> quoteSize then 
-                printfn "client incorrect checksum" 
+            //let! bytes = stream.AsyncRead quoteSize
+            //if Array.length bytes <> quoteSize then 
+            //    printfn "client incorrect checksum" 
+            do! Async.Sleep(1000)
+            do! stream.AsyncWrite(testMessage, 0, testMessage.Length)
     }
 
 let myLock = new obj()
 
 let clientAsync clientIndex = 
     async { 
-        do! Async.Sleep(clientIndex*15)
+        do! Async.Sleep(clientIndex*1000)
         if clientIndex % 10 = 0 then
             lock myLock (fun() -> printfn "%d clients..." clientIndex)       
         try 

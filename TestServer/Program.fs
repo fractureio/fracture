@@ -1,4 +1,5 @@
 ﻿open System
+open System.Net
 open flack
 
 try
@@ -7,10 +8,20 @@ try
         b |> xx
 
     let displaySend b = display "Sent: " b
+
     let displayReceive b = display "Receive: " b
-     
-    use server = new TcpListener(10, 1, 1, 128, 10003, 1000, displaySend , displayReceive )
+
+    let endpointConnected (endpoint: IPEndPoint)=
+        printfn "endpoint %A: Connected" endpoint
+
+    let endpointDisonnected (endpoint: IPEndPoint)=
+        printfn "endpoint %A: Disconnected" endpoint
+
+    
+    use server = new TcpListener(10, 2, 2, 128, 10003, 1000, displaySend , displayReceive, Some endpointConnected, endpointDisonnected )
     server.start ()
+    "Server Running, press a key to exit." |> printfn "%s"
+    Console.ReadKey() |> ignore
 with
 |   e -> 
     printfn "%s" e.Message
