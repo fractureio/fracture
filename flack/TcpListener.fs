@@ -11,7 +11,7 @@
     do()
             
     type TcpListener(maxaccepts, maxsends, maxreceives, size, port, backlog) as this =
-
+        
         let createTcpSocket() =
             new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
 
@@ -36,7 +36,7 @@
             loop 0
             pool
 
-        let acceptPool = initPool (maxaccepts, this.acceptcompleted)
+        let clients = new ConcurrentDictionary<IPEndPoint, Connection>(4, 1000)
 
         let mutable disposed = false
         
@@ -51,26 +51,21 @@
         let disconnectedEvent = new Event<_>()
         let sentEvent = new Event<_>()
         let receivedEvent = new Event<_>()
+        let acceptPool = initPool (maxaccepts, this.acceptcompleted)
+        let startAccept = listeningSocket.AcceptAsyncSafe( this.acceptcompleted, acceptPool.Take())
 
-        [<CLIEvent>]member this.Connected = connectedEvent.Publish
-        [<CLIEvent>]member this.Disconnected = disconnectedEvent.Publish
-        [<CLIEvent>]member this.Sent = sentEvent.Publish
-        [<CLIEvent>]member this.Received = receivedEvent.Publish
-
-        member this.Clients = new System.Collections.Concurrent.ConcurrentDictionary<IPEndPoint, Connection>(4, 1000)
-
-        member this.acceptcompleted (args : SocketAsyncEventArgs) =
+        member private this.acceptcompleted (args : SocketAsyncEventArgs) =
             try
                 match args.LastOperation with
                 | SocketAsyncOperation.Accept ->
                     match args.SocketError with
                     | SocketError.Success -> 
-                        listeningSocket.AcceptAsyncSafe( this.acceptcompleted, acceptPool.Take())
+                        do startAccept
                         let connection = new Connection (maxreceives, maxsends, size, args.AcceptSocket, disconnectedEvent.Trigger, sentEvent.Trigger, receivedEvent.Trigger)
                         let endPoint = args.AcceptSocket.RemoteEndPoint :?> IPEndPoint (*grab remote endpoint*)
                         //trigger connected
                         connectedEvent.Trigger(endPoint)
-                        let success = this.Clients.TryAdd(endPoint, connection) (*add client to dictionary*)
+                        let success = clients.TryAdd(endPoint, connection) (*add client to dictionary*)
                         if not success then 
                             failwith "client could not be added"
                         else
@@ -82,14 +77,18 @@
             finally
                 acceptPool.Add(args)
 
+        [<CLIEvent>]member this.Connected = connectedEvent.Publish
+        [<CLIEvent>]member this.Disconnected = disconnectedEvent.Publish
+        [<CLIEvent>]member this.Sent = sentEvent.Publish
+        [<CLIEvent>]member this.Received = receivedEvent.Publish
+
         member this.Send(client, msg:byte[]) =
-            let success, client = this.Clients.TryGetValue(client)
+            let success, client = clients.TryGetValue(client)
             match success with
             | true -> client.Send(msg)
             | _ ->  failwith "could not find client %"
 
-        member this.start () =   
-            listeningSocket.AcceptAsyncSafe( this.acceptcompleted, acceptPool.Take())
+        member this.Start () = startAccept
 
         member this.Close() =
             cleanUp()
