@@ -3,7 +3,7 @@
     open System.Net.Sockets
     open System.Collections.Concurrent
 
-    type BocketPool( number, size, callback) as this =
+    type internal BocketPool( number, size, callback) as this =
         let number = number
         let size = size
         let totalsize = (number * size)

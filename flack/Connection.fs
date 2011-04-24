@@ -7,7 +7,7 @@
     open System.Threading
     open SocketExtensions
 
-    type Connection(maxreceives, maxsends, size, socket, disconnected, sent, received ) as this =
+    type internal Connection(maxreceives, maxsends, size, socket, disconnected, sent, received ) as this =
         let socket:Socket = socket
         let maxreceives = maxreceives
         let maxsends = maxsends
@@ -30,7 +30,7 @@
         member this.Stop() =
             socket.Close(2)
         
-        member private this.receiveCompleted (args: SocketAsyncEventArgs) =
+        member this.receiveCompleted (args: SocketAsyncEventArgs) =
             try
                 match args.LastOperation with
                 | SocketAsyncOperation.Receive ->
@@ -49,7 +49,7 @@
             finally
                 receivePool.CheckIn(args)
         
-        member private this.sendCompleted (args: SocketAsyncEventArgs) =
+        member this.sendCompleted (args: SocketAsyncEventArgs) =
             try
                 match args.LastOperation with
                 | SocketAsyncOperation.Send ->
