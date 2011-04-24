@@ -17,7 +17,7 @@ try
 
     server.Disconnected |> Observable.add (fun x -> printfn "endpoint %A: Disconnected" x)
 
-    server.start ()
+    server.Start ()
     "Server Running, press a key to exit." |> printfn "%s"
     Console.ReadKey() |> ignore
 with
