@@ -43,7 +43,6 @@
   <ItemGroup>
     <Compile Include="BocketPool.fs" />
     <Compile Include="SocketExtensions.fs" />
-    <Compile Include="Connection.fs" />
     <Compile Include="TcpListener.fs" />
   </ItemGroup>
   <ItemGroup>

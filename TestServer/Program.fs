@@ -7,7 +7,7 @@ try
         let xx = a |> printfn "%s: %A"
         b |> xx
 
-    use server = new TcpListener(10, 2, 2, 128, 10003, 1000)
+    use server = new TcpListener(50, 128, 10003, 1000)
 
     server.Sent |> Observable.add (fun x -> display "Sent" x)
 
