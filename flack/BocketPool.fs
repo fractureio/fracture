@@ -3,7 +3,7 @@
     open System.Net.Sockets
     open System.Collections.Concurrent
 
-    type internal BocketPool(number, size) as this =
+    type internal BocketPool(number, size) =
         let number = number
         let size = size
         let totalsize = (number * size)
@@ -17,11 +17,13 @@
                 while pool.Count > 1 do
                     pool.Take()
                         .Dispose()
-        do
+
+        member this.Start(callback) =
             let rec loop n =
                 match n with
                 | x when x < totalsize ->
                     let saea = new SocketAsyncEventArgs()
+                    saea.Completed |> Observable.add callback
                     saea.SetBuffer(buffer, n, size)
                     this.CheckIn(saea)
                     loop (n + size)
@@ -33,7 +35,5 @@
             pool.Add(saea)
         member this.Count =
             pool.Count
-        member this.Start(callback) =
-            pool |> Seq.iter (fun x -> x.Completed |> Observable.add callback)
         interface IDisposable with
             member this.Dispose() = cleanUp()

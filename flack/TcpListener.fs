@@ -11,7 +11,7 @@
     do()
             
     ///Creates a new TcpListener using the specified parameters
-    type TcpListener(poolSize, size, port, backlog)=
+    type TcpListener(poolSize, size, port, backlog) =
         
         /// Creates a Tcp Socket using Internetwork Addressing and Stream Type.
         let createTcpSocket() =
@@ -23,8 +23,8 @@
             s.Bind(new IPEndPoint(ip, port))
             s.Listen(backlog);s
 
-        ///Creates a Socket as loopback using specified porst and connection backlog.
-        let listeningSocket = createListener( IPAddress.Loopback, port, backlog)
+        ///Creates a Socket as loopback using specified port and connection backlog.
+        let listeningSocket = createListener(IPAddress.Loopback, port, backlog)
         let pool = new BocketPool(poolSize, size)
         let clients = new ConcurrentDictionary<_,_>()
         let mutable disposed = false
@@ -42,25 +42,39 @@
         let disconnectedEvent = new Event<_>()
         let sentEvent = new Event<_>()
         let receivedEvent = new Event<_>()
-
-        let processSend (args:SocketAsyncEventArgs, clientSocket:Socket) =
-            match args.SocketError with
-            //TODO: move this check downstream to the connection callback
-            | SocketError.Success ->
-                let sentData:byte[] = Array.zeroCreate args.BytesTransferred
-                Buffer.BlockCopy(args.Buffer, args.Offset, sentData, 0, sentData.Length);
-                //notify data sent
-                (sentData, clientSocket.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
-                true
-            | SocketError.NoBufferSpaceAvailable
-            | SocketError.IOPending
-            | SocketError.WouldBlock ->
-                failwith "Buffer overflow or send buffer timeout" //graceful termination?  
-            | _ -> 
-                args.SocketError.ToString() |> printfn "socket error on send: %s"
-                false
         
-        let processReceive(args:SocketAsyncEventArgs, clientSocket:Socket) =
+        ///This function is called when each connection from clients is accepted and
+        ///is responsible for creating a Connection type to deal with receiving and sending to that client.
+        let rec completed (args : SocketAsyncEventArgs) =
+            try
+                match args.LastOperation with
+                | SocketAsyncOperation.Accept -> processAccept args
+                | SocketAsyncOperation.Receive -> processReceive args
+                | SocketAsyncOperation.Send -> processSend args
+                | _ -> args.LastOperation |> failwith "Unknown operation, should be accept but was %a"            
+            finally
+                args.UserToken <- null
+                pool.CheckIn(args)
+
+        and processAccept (args:SocketAsyncEventArgs) =
+            let sock = args.AcceptSocket
+            match args.SocketError with
+            | SocketError.Success -> 
+                let endPoint = sock.RemoteEndPoint :?> IPEndPoint
+                //trigger connected
+                connectedEvent.Trigger(endPoint)
+                let success = clients.TryAdd(endPoint, sock) (*add client to dictionary*)
+                if not success then failwith "client could not be added"
+                args.AcceptSocket <- null (*remove the AcceptSocket because we will be reusing args*)
+                let saea = pool.CheckOut()
+                saea.UserToken <- sock
+                sock.ReceiveAsyncSafe(completed, saea)
+                //start next accept, maybe switch round
+                do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+            | _ -> args.SocketError.ToString() |> printfn "socket error on accept: %s"
+
+        and processReceive (args:SocketAsyncEventArgs) =
+            let sock = args.UserToken :?> Socket
             match args.SocketError with
             //TODO: move this check downstream to the connection callback
             | SocketError.Success ->
@@ -68,69 +82,31 @@
                 let data:byte[] = Array.zeroCreate args.BytesTransferred
                 Buffer.BlockCopy(args.Buffer, args.Offset, data, 0, data.Length)
                 //notify data received
-                (data, clientSocket.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
-                true
-            | _ -> 
-                clientSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger
-                false
+                (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
+                //get on with the next receive
+                let saea = pool.CheckOut()
+                saea.UserToken <- sock
+                sock.ReceiveAsyncSafe( completed, saea)
+            | _ -> sock.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
 
-        let processAccept (args:SocketAsyncEventArgs, sock:Socket) =
+        and processSend (args:SocketAsyncEventArgs) =
+            let sock = args.UserToken :?> Socket
             match args.SocketError with
             //TODO: move this check downstream to the connection callback
-            | SocketError.Success -> 
-                let endPoint = sock.RemoteEndPoint :?> IPEndPoint
-                //trigger connected
-                connectedEvent.Trigger(endPoint)
-                let success = clients.TryAdd(endPoint, sock) (*add client to dictionary*)
-                if not success then 
-                    failwith "client could not be added"
-                true
-            | _ -> 
-                args.SocketError.ToString() |> printfn "socket error on accept: %s"
-                false
-        
-        ///This function is called when each connection from clients is accepted and
-        ///is repponsible for creating a Connection type to deal with receiving and sending to that client.
-        let rec completed (args : SocketAsyncEventArgs) =
-            try
-                match args.LastOperation with
-                | SocketAsyncOperation.Accept ->
-                    let sock = args.AcceptSocket
-                    match processAccept (args, sock) with
-                    //TODO: refactor this true/false bit out as per TODOs above
-                    | true ->
-                        args.AcceptSocket <- null (*remove the AcceptSocket because we will be reusing args*)
-                        let saea = pool.CheckOut()
-                        saea.UserToken <- sock
-                        sock.ReceiveAsyncSafe(completed, saea)
-                        //start next accept, maybe switch round
-                        do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-                    | false -> ()
-                | SocketAsyncOperation.Receive ->
-                    //get the socket
-                    let sock = args.UserToken :?> Socket
-                    match processReceive(args, sock) with
-                    //TODO: refactor this true/false bit out as per TODOs above
-                    | true -> 
-                        //get on with the next receive
-                        let saea = pool.CheckOut()
-                        saea.UserToken <- sock
-                        sock.ReceiveAsyncSafe( completed, saea)
-                    | false -> ()
-                | SocketAsyncOperation.Send ->
-                    let sock = args.UserToken :?> Socket
-                    match processSend(args, sock) with
-                    //TODO: refactor this true/false bit out as per TODOs above
-                    | true -> ()
-                        //get on with the next send?, theres nothing to send yet so no...
-                        //let saea = pool.CheckOut()
-                        //saea.UserToken <- sock
-                        //sock.SendAsyncSafe( completed, saea)
-                    | false -> ()
-                | _ -> args.LastOperation |> failwith "Unknown operation, should be accept but was %a"            
-            finally
-                args.UserToken <- null
-                pool.CheckIn(args)
+            | SocketError.Success ->
+                let sentData:byte[] = Array.zeroCreate args.BytesTransferred
+                Buffer.BlockCopy(args.Buffer, args.Offset, sentData, 0, sentData.Length);
+                //notify data sent
+                (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
+                //get on with the next send?, there's nothing to send yet so no...
+                //let saea = pool.CheckOut()
+                //saea.UserToken <- sock
+                //sock.SendAsyncSafe( completed, saea)
+            | SocketError.NoBufferSpaceAvailable
+            | SocketError.IOPending
+            | SocketError.WouldBlock ->
+                failwith "Buffer overflow or send buffer timeout" //graceful termination?  
+            | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
         [<CLIEvent>]
         ///This event is fired when a client connects.
@@ -145,17 +121,18 @@
         ///This event is fired when a message is received from a client.
         member this.Received = receivedEvent.Publish
 
-        ///Sents the specified message to the client.
+        ///Sends the specified message to the client.
         member this.Send(client, msg:byte[]) =
             let success, client = clients.TryGetValue(client)
             match success with
+            // NOTE: Synchronous send here?
             | true -> client.Send(msg)
             | _ ->  failwith "could not find client %"
         
-        ///Sters the accepting a incoming connections.
-        member this.Start () = 
+        ///Starts the accepting a incoming connections.
+        member this.Start() = 
             pool.Start(completed)
-            listeningSocket.AcceptAsyncSafe( completed, pool.CheckOut())
+            listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
 
         ///USed to close the current listening socket.
         member this.Close() =
