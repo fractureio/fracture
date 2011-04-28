@@ -52,7 +52,7 @@
                 | SocketAsyncOperation.Accept -> processAccept (args, sock)
                 | SocketAsyncOperation.Receive -> processReceive (args, sock)
                 | SocketAsyncOperation.Send -> processSend (args, sock)
-                | _ -> args.LastOperation |> failwith "Unknown operation, should be accept but was %a"            
+                | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
             finally
                 args.UserToken <- null
                 pool.CheckIn(args)
