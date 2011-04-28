@@ -44,20 +44,20 @@
         let receivedEvent = new Event<_>()
         
         ///This function is called when each connection from clients is accepted and
-        ///is responsible for creating a Connection type to deal with receiving and sending to that client.
+        ///is responsible receiving and sending to the clients.
         let rec completed (args : SocketAsyncEventArgs) =
             try
+                let sock = args.AcceptSocket
                 match args.LastOperation with
-                | SocketAsyncOperation.Accept -> processAccept args
-                | SocketAsyncOperation.Receive -> processReceive args
-                | SocketAsyncOperation.Send -> processSend args
+                | SocketAsyncOperation.Accept -> processAccept (args, sock)
+                | SocketAsyncOperation.Receive -> processReceive (args, sock)
+                | SocketAsyncOperation.Send -> processSend (args, sock)
                 | _ -> args.LastOperation |> failwith "Unknown operation, should be accept but was %a"            
             finally
                 args.UserToken <- null
                 pool.CheckIn(args)
 
-        and processAccept (args:SocketAsyncEventArgs) =
-            let sock = args.AcceptSocket
+        and processAccept (args:SocketAsyncEventArgs, sock) =
             match args.SocketError with
             | SocketError.Success -> 
                 let endPoint = sock.RemoteEndPoint :?> IPEndPoint
@@ -73,10 +73,8 @@
                 do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
             | _ -> args.SocketError.ToString() |> printfn "socket error on accept: %s"
 
-        and processReceive (args:SocketAsyncEventArgs) =
-            let sock = args.UserToken :?> Socket
+        and processReceive (args:SocketAsyncEventArgs, sock) =
             match args.SocketError with
-            //TODO: move this check downstream to the connection callback
             | SocketError.Success ->
                 //process received data
                 let data:byte[] = Array.zeroCreate args.BytesTransferred
@@ -89,19 +87,13 @@
                 sock.ReceiveAsyncSafe( completed, saea)
             | _ -> sock.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
 
-        and processSend (args:SocketAsyncEventArgs) =
-            let sock = args.UserToken :?> Socket
+        and processSend (args:SocketAsyncEventArgs, sock) =
             match args.SocketError with
-            //TODO: move this check downstream to the connection callback
             | SocketError.Success ->
                 let sentData:byte[] = Array.zeroCreate args.BytesTransferred
                 Buffer.BlockCopy(args.Buffer, args.Offset, sentData, 0, sentData.Length);
                 //notify data sent
                 (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
-                //get on with the next send?, there's nothing to send yet so no...
-                //let saea = pool.CheckOut()
-                //saea.UserToken <- sock
-                //sock.SendAsyncSafe( completed, saea)
             | SocketError.NoBufferSpaceAvailable
             | SocketError.IOPending
             | SocketError.WouldBlock ->
@@ -125,7 +117,7 @@
         member this.Send(client, msg:byte[]) =
             let success, client = clients.TryGetValue(client)
             match success with
-            // NOTE: Synchronous send here?
+            // TODO: write async send here.
             | true -> client.Send(msg)
             | _ ->  failwith "could not find client %"
         
