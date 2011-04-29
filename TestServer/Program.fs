@@ -7,11 +7,11 @@ try
         let xx = a |> printfn "%s: %A"
         b |> xx
 
-    use server = new TcpListener(50, 128, 10003, 1000)
+    use server = new TcpListener(50, 512, 10003, 1000)
 
     server.Sent |> Observable.add (fun x -> display "Sent" x)
 
-    server.Received |> Observable.add (fun x -> display "Received" x)
+    server.Received |> Observable.add (fun x -> do printfn "EndPoint: %A bytes received: %i" (snd x) (fst x).Length )
 
     server.Connected |> Observable.add (fun x -> printfn "endpoint %A: Connected" x)
 
