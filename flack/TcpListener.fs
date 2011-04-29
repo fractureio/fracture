@@ -72,6 +72,9 @@
                 connectedEvent.Trigger(endPoint)
                 args.AcceptSocket <- null (*remove the AcceptSocket because we will be reusing args*)
 
+                //start next accept
+                do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+
                 //check if data was given on connection
                 if args.BytesTransferred > 0 then
                     let data = aquiredata args
@@ -83,8 +86,6 @@
                 saea.UserToken <- sock
                 sock.ReceiveAsyncSafe(completed, saea)
 
-                //start next accept, maybe switch round
-                do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
             | _ -> args.SocketError.ToString() |> printfn "socket error on accept: %s"
 
         and processReceive (args:SocketAsyncEventArgs) =
