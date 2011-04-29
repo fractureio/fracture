@@ -4,10 +4,8 @@
     open System.Collections.Concurrent
 
     type internal BocketPool(number, size) =
-        let number = number
-        let size = size
         let totalsize = (number * size)
-        let buffer = Array.create totalsize 0uy
+        let buffer = Array.zeroCreate<byte> totalsize
         let pool = new BlockingCollection<SocketAsyncEventArgs>(number:int)
         let mutable disposed = false
         let cleanUp() = 
@@ -21,12 +19,12 @@
         member this.Start(callback) =
             let rec loop n =
                 match n with
-                | x when x < totalsize ->
+                | x when x < number ->
                     let saea = new SocketAsyncEventArgs()
                     saea.Completed |> Observable.add callback
-                    saea.SetBuffer(buffer, n, size)
+                    saea.SetBuffer(buffer, x, size)
                     this.CheckIn(saea)
-                    loop (n + size)
+                    loop (x + 1)
                 | _ -> ()
             loop 0                    
         member this.CheckOut() =
