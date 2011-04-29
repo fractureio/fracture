@@ -12,16 +12,13 @@
             
     ///Creates a new TcpListener using the specified parameters
     type TcpListener(poolSize, size, port, backlog) =
-        
-        /// Creates a Tcp Socket using Internetwork Addressing and Stream Type.
-        let createTcpSocket() =
-            new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
 
         /// Created a Socket and binds it to address and port and specified connection backlog.
         let createListener (ip:IPAddress, port, backlog) =
-            let s = createTcpSocket()
-            s.Bind(new IPEndPoint(ip, port))
-            s.Listen(backlog);s
+            let listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+            listener.Bind(new IPEndPoint(ip, port))
+            listener.Listen(backlog)
+            listener
 
         ///Creates a Socket as loopback using specified port and connection backlog.
         let listeningSocket = createListener(IPAddress.Loopback, port, backlog)
