@@ -3,17 +3,19 @@ open System.Net
 open flack
 
 try
-    let display a b =
-        let xx = a |> printfn "%s: %A"
-        b |> xx
+    use server = new TcpListener(50, 64, 10003, 1000)
 
-    use server = new TcpListener(50, 512, 10003, 1000)
-
-    server.Sent |> Observable.add (fun x -> display "Sent" x)
+    server.Sent |> Observable.add (fun x -> printfn  "**Sent: %A " (fst x).Length )
 
     server.Received |> Observable.add (fun x -> do printfn "%A EndPoint: %A bytes received: %i" DateTime.Now.TimeOfDay (snd x) (fst x).Length )
+    
+    let testbuffer = [| 0uy .. 129uy |]
 
-    server.Connected |> Observable.add (fun x -> printfn "%A Endpoint: %A: Connected" DateTime.Now.TimeOfDay x)
+    let sendOnConnect x = 
+        printfn "%A Endpoint: %A: Connected" DateTime.Now.TimeOfDay x
+        server.Send(x, testbuffer)
+
+    server.Connected |> Observable.add (fun x -> sendOnConnect x)
 
     server.Disconnected |> Observable.add (fun x -> printfn "%A Endpoint %A: Disconnected" DateTime.Now.TimeOfDay x)
 
