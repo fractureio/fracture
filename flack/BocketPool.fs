@@ -18,14 +18,12 @@
 
         member this.Start(callback) =
             let rec loop n =
-                match n with
-                | x when x < number ->
+                if n < number then
                     let saea = new SocketAsyncEventArgs()
                     saea.Completed |> Observable.add callback
-                    saea.SetBuffer(buffer, x, size)
+                    saea.SetBuffer(buffer, n, size)
                     this.CheckIn(saea)
-                    loop (x + 1)
-                | _ -> ()
+                    loop (n + 1)
             loop 0                    
         member this.CheckOut() =
             pool.Take()
