@@ -65,8 +65,7 @@
 
         and processAccept (args:SocketAsyncEventArgs) =
             let sock = args.AcceptSocket
-            match args.SocketError with
-            | SocketError.Success -> 
+            if args.SocketError = SocketError.Success then
                 //process newly connected client
                 let endPoint = sock.RemoteEndPoint :?> IPEndPoint
                 let success = clients.TryAdd(endPoint, sock) (*add client to dictionary*)
@@ -89,13 +88,11 @@
                 let saea = pool.CheckOut()
                 saea.UserToken <- sock
                 sock.ReceiveAsyncSafe(completed, saea)
-
-            | _ -> args.SocketError.ToString() |> printfn "socket error on accept: %s"
+            else args.SocketError.ToString() |> printfn "socket error on accept: %s"
 
         and processReceive (args:SocketAsyncEventArgs) =
             let sock = args.UserToken :?> Socket
-            match args.SocketError with
-            | SocketError.Success when args.BytesTransferred > 0 ->
+            if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
                 //process received data, check if data was given on connection.
                 let data = aquiredata args
                 //trigger received
@@ -104,7 +101,7 @@
                 let saea = pool.CheckOut()
                 saea.UserToken <- sock
                 sock.ReceiveAsyncSafe( completed, saea)
-            | _ ->
+            else
                 //Something went wrong or the client stopped sending bytes.
                 sock.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
                 closeConnection sock
