@@ -26,6 +26,10 @@
         let clients = new ConcurrentDictionary<_,_>()
         let mutable disposed = false
         
+        let closeConnection (sock:Socket) =
+            try sock.Shutdown(SocketShutdown.Both)
+            finally sock.Close()
+
         //ensures the listening socket is shutdown on disposal.
         let cleanUp() = 
             if not disposed then
@@ -117,10 +121,6 @@
             | SocketError.WouldBlock ->
                 failwith "Buffer overflow or send buffer timeout" //graceful termination?  
             | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
-
-        and closeConnection (sock:Socket) =
-            try sock.Shutdown(SocketShutdown.Both)
-            finally sock.Close()
 
         [<CLIEvent>]
         ///This event is fired when a client connects.
