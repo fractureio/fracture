@@ -135,24 +135,20 @@
         ///Sends the specified message to the client.
         member this.Send(client, msg:byte[]) =
             let success, client = clients.TryGetValue(client)
-            match success with
-            | true -> 
+            if success then
                 let rec loop offset =
-                    match offset with
-                    | offset when offset < msg.Length ->
-                        let remaining = msg.Length - offset
+                    if offset < msg.Length then
                         let tosend =
-                            if remaining > size then size
-                            else remaining
+                            let remaining = msg.Length - offset in
+                            if remaining > size then size else remaining
                         let saea = pool.CheckOut()
                         saea.UserToken <- client
                         Array.blit msg offset saea.Buffer saea.Offset tosend
                         saea.SetBuffer(saea.Offset, tosend)
                         client.SendAsyncSafe(completed, saea)
                         loop (offset + tosend)
-                    | _ -> ()
                 loop 0                    
-            | _ ->  failwith "could not find client %"
+            else failwith "could not find client %"
         
         ///Starts the accepting a incoming connections.
         member this.Start() = 
