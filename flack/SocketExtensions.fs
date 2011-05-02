@@ -19,5 +19,8 @@
         member s.SendAsyncSafe(callback, args) = 
             s.InvokeAsyncMethod(s.SendAsync, callback, args)
 
+        member s.ConnectAsyncSafe(callback, args) = 
+            s.InvokeAsyncMethod(s.ConnectAsync, callback, args)
+
         member s.DisconnectAsyncSafe(callback, args) = 
             s.InvokeAsyncMethod(s.DisconnectAsync, callback, args)
