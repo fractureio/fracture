@@ -48,6 +48,13 @@
   <ItemGroup>
     <Compile Include="testclient.fs" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\flack\Flack.fsproj">
+      <Name>Flack</Name>
+      <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\FSharp\1.0\Microsoft.FSharp.Targets" Condition="!Exists('$(MSBuildBinPath)\Microsoft.Build.Tasks.v4.0.dll')" />
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft F#\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildBinPath)\Microsoft.Build.Tasks.v4.0.dll')" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
