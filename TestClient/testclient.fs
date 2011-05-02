@@ -15,10 +15,10 @@ let clientRequestQuoteStream (clientIndex, server, port:int) =
         do!  client.AsyncConnect(server,port, clientIndex)
         let stream = client.GetStream()
         while true do
-            //do! stream.AsyncWrite(testMessage, 0, testMessage.Length)
-            let! x = stream.AsyncRead(1)
-            x |> printfn "Data: %A"
-            do! Async.Sleep(100)
+            do! stream.AsyncWrite(testMessage, 0, testMessage.Length)
+            //let! x = stream.AsyncRead(1)
+            //x |> printfn "Data: %A"
+            do! Async.Sleep(1000)
     }
 
 let myLock = new obj()

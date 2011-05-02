@@ -75,7 +75,7 @@
                 connectedEvent.Trigger(endPoint)
                 args.AcceptSocket <- null (*remove the AcceptSocket because we will be reusing args*)
 
-                //start next accept
+                //start next accept, *note pool.CheckOut could block
                 do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
 
                 //check if data was given on connection
@@ -143,7 +143,8 @@
                             if remaining > size then size else remaining
                         let saea = pool.CheckOut()
                         saea.UserToken <- client
-                        Array.blit msg offset saea.Buffer saea.Offset tosend
+                        Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, tosend)
+                        //Array.blit msg offset saea.Buffer saea.Offset tosend
                         saea.SetBuffer(saea.Offset, tosend)
                         client.SendAsyncSafe(completed, saea)
                         loop (offset + tosend)

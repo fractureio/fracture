@@ -3,7 +3,7 @@ open System.Net
 open flack
 
 try
-    use server = new TcpListener(50, 64, 10003, 1000)
+    use server = new TcpListener(50, 128, 10003, 1000)
 
     server.Sent |> Observable.add (fun x -> printfn  "**Sent: %A " (fst x).Length )
 
@@ -12,7 +12,7 @@ try
     let testbuffer = [| 0uy .. 129uy |]
 
     let sendOnConnect x = 
-        printfn "%A Endpoint: %A: Connected" DateTime.Now.TimeOfDay x
+        printfn "%A Endpoint: %A: Connected, sending %i test Bytes" DateTime.Now.TimeOfDay x testbuffer.Length
         server.Send(x, testbuffer)
 
     server.Connected |> Observable.add (fun x -> sendOnConnect x)
