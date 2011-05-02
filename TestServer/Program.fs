@@ -3,7 +3,7 @@ open System.Net
 open flack
 
 try
-    use server = new TcpListener(50, 128, 10003, 1000)
+    use server = new TcpListener(50, 512, 10003, 1000)
 
     server.Sent |> Observable.add (fun x -> printfn  "**Sent: %A " (fst x).Length )
 

@@ -144,7 +144,6 @@
                         let saea = pool.CheckOut()
                         saea.UserToken <- client
                         Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, tosend)
-                        //Array.blit msg offset saea.Buffer saea.Offset tosend
                         saea.SetBuffer(saea.Offset, tosend)
                         client.SendAsyncSafe(completed, saea)
                         loop (offset + tosend)
