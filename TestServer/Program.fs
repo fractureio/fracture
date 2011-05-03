@@ -1,9 +1,10 @@
 ﻿open System
 open System.Net
-open flack
+open Flack
 
 try
-    use server = new TcpListener(50, 512, 10003, 1000)
+
+    use server = new TcpListener(new IPEndPoint(IPAddress.Loopback, 10003), 50, 512, 100)
 
     server.Sent |> Observable.add (fun x -> printfn  "**Sent: %A " (fst x).Length )
 

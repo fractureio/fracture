@@ -1,5 +1,5 @@
 ﻿open System
-open flack
+open Flack
 
 let quoteSize = 512
 let testMessage = Array.init<byte> 512 (fun _ -> 1uy)
@@ -39,10 +39,12 @@ let testMessage2 = Array.init<byte> 1 (fun _ -> 1uy)
 //    |> Async.Start
 //System.Console.ReadKey() |> ignore
 
-let client = new flack.TcpClient()
+let client = new TcpClient()
 client.Sent |> Observable.add (fun x -> printfn  "**Sent: %A " (fst x).Length )
 client.Received |> Observable.add (fun x -> do printfn "%A EndPoint: %A bytes received: %i" DateTime.Now.TimeOfDay (snd x) (fst x).Length )
-client.Connected |> Observable.add (fun x -> do printfn "%A Connected" DateTime.Now.TimeOfDay)
+client.Connected |> Observable.add (fun x -> 
+    do printfn "%A Connected" DateTime.Now.TimeOfDay
+    client.Send(testMessage))
 client.Disconnected |> Observable.add (fun x -> printfn "%A Endpoint %A: Disconnected" DateTime.Now.TimeOfDay x)
 
 client.Start(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 10003))

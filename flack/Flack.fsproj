@@ -43,8 +43,9 @@
   <ItemGroup>
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="BocketPool.fs" />
-    <Compile Include="TcpListener.fs" />
+    <Compile Include="FlackCommon.fs" />
     <Compile Include="TcpClient.fs" />
+    <Compile Include="TcpListener.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.PowerPack">

@@ -1,7 +1,8 @@
-﻿namespace flack
-    open System
-    open System.Net.Sockets
-    open System.Collections.Concurrent
+﻿namespace Flack
+open System
+open System.Net.Sockets
+open System.Collections.Generic
+open System.Collections.Concurrent
 
     type internal BocketPool(number, size) =
         let totalsize = (number * size)
@@ -38,3 +39,5 @@
             pool.Count
         interface IDisposable with
             member this.Dispose() = cleanUp()
+
+    ////////////////// End of BocketPool definition ////////////////////
