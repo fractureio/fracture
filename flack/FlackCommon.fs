@@ -19,12 +19,13 @@ let closeConnection (sock:Socket) =
     try sock.Shutdown(SocketShutdown.Both)
     finally sock.Close()
 
-let send( client:Socket, saea:SocketAsyncEventArgs, completed, maxSize, msg:byte[])= 
+let send( client:Socket, getsaea:unit -> SocketAsyncEventArgs, completed, maxSize, msg:byte[])= 
     let rec loop offset =
         if offset < msg.Length then
             let tosend =
                 let remaining = msg.Length - offset in
                 if remaining > maxSize then maxSize else remaining
+            let saea = getsaea()
             saea.UserToken <- client
             Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, tosend)
             saea.SetBuffer(saea.Offset, tosend)

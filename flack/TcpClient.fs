@@ -99,8 +99,7 @@ type TcpClient(ipendpoint, poolSize, size) =
 
     ///Sends the specified message to the client.
     member this.Send(msg:byte[]) =
-        let saea = pool.CheckOut()
-        send(listeningSocket, saea, completed, size, msg)
+        send(listeningSocket, pool.CheckOut, completed, size, msg)
         
     ///Starts connecting with remote server
     member this.Start(ipendpoint) = 

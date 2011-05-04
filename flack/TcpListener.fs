@@ -114,8 +114,7 @@ type TcpListener(ipendpoint, poolSize, size, backlog) =
     member this.Send(client, msg:byte[]) =
         let success, client = clients.TryGetValue(client)
         if success then 
-            let saea = pool.CheckOut()//may block
-            send(client, saea, completed, size, msg)
+            send(client, pool.CheckOut, completed, size, msg)
         else failwith "could not find client %"
         
     ///Starts the accepting a incoming connections.
