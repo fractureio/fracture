@@ -1,0 +1,5 @@
+Pipelets is a composable pipeline library for F#
+
+Each pipeline stage has a backing queue which can be set to a configurable timit, once this limit is reached the stage blocks until a slot if free, this can help under potential denial of service type effects and stops the internal queues becoming too large.  
+
+TODO: more details and code example.
