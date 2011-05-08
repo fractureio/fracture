@@ -26,16 +26,15 @@
                 let rec loop()=
                     let item = ref Unchecked.defaultof<_>
                     let taken = buffer.TryTake(item, blocktime)
-                    match taken with
-                    | true ->
-                          do !item 
-                          |> processor 
-                          |> Seq.iter (fun z -> 
-                          (match !routes with
-                           | [] -> ()(*we cant route with no routes*)
-                           | _ -> do router (!routes, z) |> Seq.iter (fun r -> (r.Insert z ))) )
-                          loop()
-                    | false -> ()(*exit nothing to consume in time limit*)
+                    if taken then
+                        do !item 
+                        |> processor 
+                        |> Seq.iter (fun z -> 
+                        (match !routes with
+                        | [] -> ()(*we cant route with no routes*)
+                        | _ -> do router (!routes, z) |> Seq.iter (fun r -> (r.Insert z ))) )
+                        loop()
+                    else ()(*exit nothing to consume in time limit*)
                 loop()
             with e -> raise e
             }
@@ -45,15 +44,14 @@
         interface IPipeletInput<'a> with
             member this.Insert payload =
                 let added = buffer.TryAdd(payload, blocktime)
-                match added with
-                | true -> 
+                if added then
                     //begin consumer loop
                     if not !queuedOrRunning then
                         lock consumerLoop (fun() ->
                         Async.Start(async {do! consumerLoop })
                         queuedOrRunning := true)
                     else()
-                | false -> 
+                else 
                     //overflow here if function passed
                     match overflow with
                     | Some t ->  payload |> overflow.Value 
