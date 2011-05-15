@@ -32,3 +32,4 @@ docs/
 tools/FAKE/templates/
 test/
 *_Spliced.*
+*.vsp

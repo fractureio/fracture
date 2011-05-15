@@ -1,38 +1,45 @@
 ﻿module PipeletsDemo
     open System
     open Pipelets
-
-    let consoleLock = new obj()
+    open Printf
 
     let split del n (s:string) = 
-        lock consoleLock (fun() -> 
-        do printfn "%A:before split %A" n s
+        Console.WriteLine(sprintf "%s: Before split %A" n s)
         let split = s.Split([|del|]) 
-        do printfn "%A:after: split into: %A" n split
-        split |> Array.toSeq)
+        Console.WriteLine(sprintf "%s: After: split into: %A" n split)
+        split |> Array.toSeq
 
     let reverse (s:string) = 
         new string(s |> Seq.toArray |> Array.rev)
 
     let oneToSingleton a b f=
-        lock consoleLock (fun() -> 
-            printfn "%A:before reverse %A" a b
+            Console.WriteLine(sprintf "%s: Before reverse %A" a b)
             let result = b |> f 
-            printfn "%A:after reverse %A" a result
-            result|> Seq.singleton)
+            Console.WriteLine(sprintf "%s: After reverse %A" a result)
+            result|> Seq.singleton
 
     let OneToSeqRev a b = oneToSingleton a b reverse 
 
     ///Simply picks the first route
     let basicRouter( r, i) =
-        let head = Seq.head r
-        Seq.singleton head
-    
-    let p1 = pipelet( split ',' "1", basicRouter)
-    let p2 = pipelet( OneToSeqRev "2", basicRouter)
-    let p3 = pipelet( OneToSeqRev "3", basicRouter)
+        r|> Seq.head |> Seq.singleton
 
-    p1 ++> p2 ++> p3 |> ignore
+    let printoverflow stageno msg =
+        let str = sprintf"%s: Overflow: %A" stageno msg
+        Console.WriteLine(str)
+    
+    let p1 = pipelet(split ',' "1", basicRouter, 5, printoverflow "1", 500)
+    let p2 = pipelet(OneToSeqRev "2", basicRouter, 5, printoverflow "2", 500)
+    let p3 = pipelet(OneToSeqRev "3", basicRouter, 5, printoverflow "3", 500)
+    let p4 = pipelet(OneToSeqRev "4", basicRouter, 5, printoverflow "4", 500)
+    let p5 = pipelet(OneToSeqRev "5", basicRouter, 5, printoverflow "5", 500)
+    let p6 = pipelet(OneToSeqRev "6", basicRouter, 5, printoverflow "6", 500)
+    let p7 = pipelet(OneToSeqRev "7", basicRouter, 5, printoverflow "7", 500)
+    let p8 = pipelet(OneToSeqRev "8", basicRouter, 5, printoverflow "8", 500)
+    let p9 = pipelet(OneToSeqRev "9", basicRouter, 5, printoverflow "9", 500)
+    let p10 = pipelet(OneToSeqRev "10", basicRouter, 5, printoverflow "10", 500)
+
+    p1 ++> p2 ++> p3 ++> p4 ++> p5++> p6++> p7++> p8++> p9++> p10 |> ignore
 
     let generateCircularSeq (lst:'a list) = 
         let rec next () = 
@@ -42,10 +49,11 @@
                 yield! next()
             }
         next()
-
+    
+    System.AppDomain.CurrentDomain.UnhandledException |> Observable.add (fun x -> printfn "%A" (x.ExceptionObject :?> Exception);Console.ReadKey() |>ignore)
     for str in ["John,Paul,George,Ringo"; "Nord,Bert"] 
     |> generateCircularSeq 
-    |> Seq.take 10 
+    |> Seq.take 500
         do  str -->> p1
 
     let x = Console.ReadKey()
