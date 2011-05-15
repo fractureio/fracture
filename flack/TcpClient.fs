@@ -69,7 +69,7 @@ type TcpClient(ipendpoint, poolSize, size) =
             (data, listeningSocket.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
             //get on with the next receive
             let saea = pool.CheckOut()
-            listeningSocket.ReceiveAsyncSafe( completed, saea)
+            listeningSocket.ReceiveAsyncSafe (completed,  saea)
         else
             //Something went wrong or the server stopped sending bytes.
             listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
