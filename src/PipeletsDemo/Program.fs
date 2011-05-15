@@ -55,7 +55,7 @@
 
     for str in ["John,Paul,George,Ringo"; "Nord,Bert"] 
     |> generateCircularSeq 
-    |> Seq.take 500
+    |> Seq.take 10
         do  str -->> p1
 
     let x = Console.ReadKey()

@@ -9,26 +9,31 @@
         let routes = ref List.empty<IPipeletInput<'b>>
         let queuedOrRunning = ref false
         let blocktime = defaultArg blockingTime 250
+        let consumerlock = new Object()
 
         let getandprocess = async {
             let! taken = buffer.AsyncTryGet(blocktime)
             return taken |> Option.map processor
         }
 
-        let consumerLoop = async {
-            try
-                while true do
-                    let! result = getandprocess
-                    if result.IsSome then
-                        do result.Value |> Seq.iter (fun z -> 
-                            match !routes with 
-                            | [] -> ()
-                            | _ -> do router(!routes, z) |> Seq.iter (fun r -> r.Insert z ))
-                    else()
-            with
-            | _ as exc -> ()
-        }
 
+        let consumerloop =
+            let rec loop =
+                async {
+                let! result = getandprocess
+                if result.IsSome then
+                    do result.Value |> Seq.iter (fun z -> 
+                        match !routes with 
+                        | [] -> ()
+                        | _ -> do router(!routes, z) |> Seq.iter (fun r -> r.Insert z ))
+                    do! loop
+                else
+                    lock consumerlock (fun() ->
+                    queuedOrRunning := false)
+                    //Console.WriteLine("Consumer loop terminating"))
+                }
+            loop
+                
         member this.ClearRoutes = routes := []
         
         interface IPipeletInput<'a> with
@@ -39,8 +44,8 @@
                         if result.IsSome then
                             //begin consumer loop
                             if not !queuedOrRunning then
-                                lock consumerLoop (fun() ->
-                                Async.Start(consumerLoop)
+                                lock consumerlock (fun() ->
+                                Async.Start(consumerloop)
                                 queuedOrRunning := true)
                         else if overflow.IsSome then 
                             payload |> overflow.Value
