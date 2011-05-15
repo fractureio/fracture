@@ -3,24 +3,24 @@
     open System.Net
     open System.Net.Sockets
 
+    /// helper method to make async based call easier, this ensures the callback always gets 
+    /// called even if there is an error or the async method completed syncronously
+    let invokesafe callback (args:SocketAsyncEventArgs) asyncmethod =
+        let result = asyncmethod args
+        if result <> true then callback args
+
     type Socket with 
-        /// extension method to make async based call easier, this ensures the callback always gets 
-        /// called even if there is an error or the async method completed syncronously
-        member s.InvokeAsyncMethod( asyncmethod, callback, args:SocketAsyncEventArgs) =
-            let result = asyncmethod args
-            if result <> true then callback args
-            
         member s.AcceptAsyncSafe(callback, args) = 
-            s.InvokeAsyncMethod(s.AcceptAsync, callback, args)
+            invokesafe callback  args  s.AcceptAsync
 
         member s.ReceiveAsyncSafe(callback, args) = 
-            s.InvokeAsyncMethod(s.ReceiveAsync, callback, args)
+            invokesafe callback, args, s.ReceiveAsync
 
         member s.SendAsyncSafe(callback, args) = 
-            s.InvokeAsyncMethod(s.SendAsync, callback, args)
+            invokesafe callback args s.SendAsync
 
         member s.ConnectAsyncSafe(callback, args) = 
-            s.InvokeAsyncMethod(s.ConnectAsync, callback, args)
+            invokesafe callback args s.ConnectAsync
 
         member s.DisconnectAsyncSafe(callback, args) = 
-            s.InvokeAsyncMethod(s.DisconnectAsync, callback, args)
+            invokesafe callback args s.DisconnectAsync
