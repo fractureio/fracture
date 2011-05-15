@@ -21,7 +21,6 @@ type internal BlockingAgentMessage<'T> =
  // Get item from the queue (block if no item available)
  | Get of AsyncReplyChannel<'T>
 
-
 /// <summary> Agent that implements an asynchronous blocking queue. </summary>
 /// <remarks>
 ///   The queue has maximal length (maxLength) and if the queue is 
@@ -95,11 +94,22 @@ type BlockingQueueAgent<'T>(maxLength) =
 
  /// Asynchronously adds item to the queue. The operation ends when
  /// there is a place for the item. If the queue is full, the operation
+ /// will block until some items are removed, or the timeout interval occurs.
+ member x.AsyncTryAdd(v:'T, ?timeout) = 
+   agent.PostAndTryAsyncReply((fun ch -> Add(v, ch)), ?timeout=timeout)
+ 
+ /// Asynchronously adds item to the queue. The operation ends when
+ /// there is a place for the item. If the queue is full, the operation
  /// will block until some items are removed.
  member x.AsyncAdd(v:'T, ?timeout) = 
-   agent.PostAndTryAsyncReply((fun ch -> Add(v, ch)), ?timeout=timeout)
+   agent.PostAndAsyncReply((fun ch -> Add(v, ch)), ?timeout=timeout)
+
+ /// Asynchronously gets item from the queue. If there are no items
+ /// in the queue, the operation will block unitl items are added, or the timout interval occurs
+ member x.AsyncTryGet(?timeout) = 
+   agent.PostAndTryAsyncReply(Get, ?timeout=timeout)
 
  /// Asynchronously gets item from the queue. If there are no items
  /// in the queue, the operation will block unitl items are added.
  member x.AsyncGet(?timeout) = 
-   agent.PostAndTryAsyncReply(Get, ?timeout=timeout)
+   agent.PostAndAsyncReply(Get, ?timeout=timeout)
