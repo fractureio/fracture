@@ -3,6 +3,11 @@
     open System.Reflection
     open System.Collections.Concurrent
     open FSharp.Control
+
+    [<AutoOpen>]
+    module AsyncOperators =
+        let inline (>>=) m f = async.Bind(m, f)
+        let inline mreturn x = async.Return(x)
     
     type pipelet<'a,'b>(processor, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, capacity, ?overflow, ?blockingTime) =
         let buffer = BlockingQueueAgent<_> capacity
@@ -11,49 +16,37 @@
         let blocktime = defaultArg blockingTime 250
         let consumerlock = new Object()
 
-        let getandprocess = async {
-            let! taken = buffer.AsyncTryGet(blocktime)
-            return taken |> Option.map processor
-        }
-
+        let getandprocess =
+            let exec () = buffer.AsyncTryGet(blocktime) >>= (mreturn << Option.map processor)
+            async.Delay(exec) // This is the important delay point.
 
         let consumerloop =
-            let rec loop =
-                async {
-                let! result = getandprocess
-                if result.IsSome then
-                    do result.Value |> Seq.iter (fun z -> 
+            let terminate() = queuedOrRunning := false; mreturn ()
+            let rec loop () = getandprocess >>= exec
+            and exec result =
+                match result with
+                | Some(x) ->
+                    do x |> Seq.iter (fun z -> 
                         match !routes with 
                         | [] -> ()
                         | _ -> do router(!routes, z) |> Seq.iter (fun r -> r.Insert z ))
-                    do! loop
-                else
-                    lock consumerlock (fun() ->
-                    queuedOrRunning := false)
-                    //Console.WriteLine("Consumer loop terminating"))
-                }
-            loop
+                    loop()
+                | _ -> lock consumerlock terminate
+            loop()
                 
         member this.ClearRoutes = routes := []
         
         interface IPipeletInput<'a> with
             member this.Insert payload =
-                Async.Start(async {
-                    try
-                        let! result = buffer.AsyncTryAdd(payload, blocktime)
-                        if result.IsSome then
-                            //begin consumer loop
-                            if not !queuedOrRunning then
-                                lock consumerlock (fun() ->
-                                Async.Start(consumerloop)
-                                queuedOrRunning := true)
-                        else if overflow.IsSome then 
-                            payload |> overflow.Value
-                    with
-                    | _ as exc ->
-                        if overflow.IsSome then 
-                            payload |> overflow.Value
-                    })
+                let errorHandler e = mreturn <| match overflow with Some(f) -> f payload | _ -> ()
+                let start() = Async.Start(consumerloop); queuedOrRunning := true
+                let exec result =
+                    match result with
+                    // Start consumer loop
+                    | Some(x) -> mreturn <| if not !queuedOrRunning then lock consumerlock start
+                    | _ -> errorHandler()
+                let computation = buffer.AsyncTryAdd(payload, blocktime) >>= exec
+                async.TryWith(computation, errorHandler) |> Async.Start
         
         interface IPipeletConnect<'b> with
             member this.Attach (stage) =
