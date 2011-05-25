@@ -43,7 +43,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.fs" />
+    <Compile Include="program.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Pipelets\Pipelets.fsproj">
