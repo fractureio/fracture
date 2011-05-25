@@ -1,75 +1,55 @@
-﻿namespace Pipelets
-    open System
-    open System.Reflection
-    open System.Collections.Concurrent
-    open FSharp.Control
+﻿module fracture
+open System
+open System.Threading
+open System.Reflection
     
-    type pipelet<'a,'b>(processor, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, capacity, ?overflow, ?blockingTime) =
-        let buffer = BlockingQueueAgent<_> capacity
-        let routes = ref List.empty<IPipeletInput<'b>>
-        let queuedOrRunning = ref false
-        let blocktime = defaultArg blockingTime 250
-        let consumerlock = new Object()
+[<Interface>]
+type IPipeletInput<'a> =
+    abstract Post: 'a -> unit
 
-        let getandprocess = async {
-            let! taken = buffer.AsyncTryGet(blocktime)
-            return taken |> Option.map processor
-        }
+type Message<'a> =
+| Payload of 'a
 
-
-        let consumerloop =
-            let rec loop =
-                async {
-                let! result = getandprocess
-                if result.IsSome then
-                    do result.Value |> Seq.iter (fun z -> 
-                        match !routes with 
-                        | [] -> ()
-                        | _ -> do router(!routes, z) |> Seq.iter (fun r -> r.Insert z ))
-                    do! loop
-                else
-                    lock consumerlock (fun() ->
-                    queuedOrRunning := false)
-                    //Console.WriteLine("Consumer loop terminating"))
-                }
-            loop
-                
-        member this.ClearRoutes = routes := []
+type pipelet<'a,'b>(name:string, transform, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, maxcount, maxwait:int)= 
         
-        interface IPipeletInput<'a> with
-            member this.Insert payload =
-                Async.Start(async {
-                    try
-                        let! result = buffer.AsyncTryAdd(payload, blocktime)
-                        if result.IsSome then
-                            //begin consumer loop
-                            if not !queuedOrRunning then
-                                lock consumerlock (fun() ->
-                                Async.Start(consumerloop)
-                                queuedOrRunning := true)
-                        else if overflow.IsSome then 
-                            payload |> overflow.Value
-                    with
-                    | _ as exc ->
-                        if overflow.IsSome then 
-                            payload |> overflow.Value
-                    })
+    let routes = ref List.empty<IPipeletInput<'b>>
+    let ss  = new SemaphoreSlim(maxcount, maxcount);
         
-        interface IPipeletConnect<'b> with
-            member this.Attach (stage) =
-                let current = !routes
-                routes := stage :: current
-            member this.Detach (stage) =
-                let current = !routes
-                routes := List.filter (fun el -> el <> stage) current
+    let dorouting result routes=
+            do result |> Seq.iter (fun msg -> router(routes, msg) |> Seq.iter (fun stage -> stage.Post(msg)))
 
-        static member Attach (a:IPipeletConnect<_>) (b) = a.Attach b;b
-        static member Detach (a: IPipeletConnect<_>) (b) = a.Detach b;a
-        ///Connect operator
-        static member (++>) (a:IPipeletConnect<_>, b) = a.Attach (b);b
-        ///Detach operator
-        static member (-->) (a:IPipeletConnect<_>, b) = a.Detach b;a
-        ///Insert into leftoperator
-        static member (<<--) (a:IPipeletInput<_>, b:'b) = a.Insert b
-        ///Insert into right operator
-        static member (-->>) (b,a:IPipeletInput<_>) = a.Insert b
+    let mailbox = MailboxProcessor.Start(fun inbox ->
+        let rec loop() = async {
+            let! msg = inbox.Receive()
+            ss.Release() |> ignore
+            try
+                match !routes with
+                | [] ->()
+                | _ as routes -> 
+                    msg |> transform |> dorouting <| routes
+                return! loop()
+            with //force loop resume on error
+            | ex -> 
+                Console.WriteLine(sprintf "%A Error: %A" DateTime.Now.TimeOfDay ex.Message )
+                return! loop()
+            }
+        loop())
+
+    interface IPipeletInput<'a> with
+        member this.Post payload =
+            if ss.Wait(maxwait) then
+                mailbox.Post(payload)
+            else ( Console.WriteLine(sprintf "%A Overflow: %A" DateTime.Now.TimeOfDay payload ))  //overflow
+
+    member this.Name with get() = name
+
+    member this.Attach(stage) =
+        let current = !routes
+        routes := stage :: current
+        
+    member this.Detach (stage) =
+        let current = !routes
+        routes := List.filter (fun el -> el <> stage) current
+
+let inline (<--) (m:pipelet<_,_>) msg = (m :> IPipeletInput<_>).Post(msg)
+let inline (-->) msg (m:pipelet<_,_>)= (m :> IPipeletInput<_>).Post(msg)
