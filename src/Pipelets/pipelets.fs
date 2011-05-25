@@ -53,3 +53,6 @@ type pipelet<'a,'b>(name:string, transform, router: seq<IPipeletInput<'b>> * 'b 
 
 let inline (<--) (m:pipelet<_,_>) msg = (m :> IPipeletInput<_>).Post(msg)
 let inline (-->) msg (m:pipelet<_,_>)= (m :> IPipeletInput<_>).Post(msg)
+
+let inline (++>) (a:pipelet<_,_>) b = a.Attach(b);b
+let inline (-+>) (a:pipelet<_,_>) b = a.Detach(b);b

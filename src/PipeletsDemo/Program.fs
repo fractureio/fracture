@@ -8,15 +8,13 @@ let reverse (s:string) =
     new string(s |> Seq.toArray |> Array.rev)
 
 let oneToSingleton a b f=
-        //Console.WriteLine(sprintf "%s: Before reverse %A" a b)
         let result = b |> f 
-        //Console.WriteLine(sprintf "%s: After reverse %A" a result)
         result |> Seq.singleton
 
-///total number to run through test cycle
-let number = 10000
+/// total number to run through test cycle
+let number = 100000
 
-///dirty hack to record when we are done
+/// hack to record when we are done
 let counter = ref 0
 let sw = new Stopwatch()
 let countthis (a:String) =
@@ -24,14 +22,28 @@ let countthis (a:String) =
     if !counter % number = 0 then 
         sw.Stop()
         printfn "Execution time: %A" sw.Elapsed
+        printfn "Items input: %d" number
+        printfn "Time per item: %A ms (Elapsed Time / Number of items)" (TimeSpan.FromTicks(sw.ElapsedTicks / int64 number).TotalMilliseconds)
+        printfn "Press a key to exit."
     counter|> Seq.singleton
 
-let OneToSeqRev a b = oneToSingleton a b reverse 
+let OneToSeqRev a b = 
+    //Console.WriteLine(sprintf "stage: %s item: %s" a b)
+    oneToSingleton a b reverse 
 
-///Simply picks the first route
+/// Simply picks the first route
 let basicRouter( r, i) =
     r|> Seq.head |> Seq.singleton
-              
+
+let generateCircularSeq (s) = 
+    let rec next () = 
+        seq {
+            for element in s do
+                yield element
+            yield! next()
+        }
+    next()
+             
 let stage1 = pipelet("Stage1", OneToSeqRev "1", basicRouter, number, -1)
 let stage2 = pipelet("Stage2", OneToSeqRev "2", basicRouter, number, -1)
 let stage3 = pipelet("Stage3", OneToSeqRev "3", basicRouter, number, -1)
@@ -42,55 +54,25 @@ let stage7 = pipelet("Stage7", OneToSeqRev "7", basicRouter, number, -1)
 let stage8 = pipelet("Stage8", OneToSeqRev "8", basicRouter, number, -1)
 let stage9 = pipelet("Stage9", OneToSeqRev "9", basicRouter, number, -1)
 let stage10 = pipelet("Stage10", OneToSeqRev "10", basicRouter, number, -1)
-let stage11 = pipelet("Stage11", OneToSeqRev "11", basicRouter, number, -1)
-let stage12 = pipelet("Stage12", OneToSeqRev "12", basicRouter, number, -1)
-let stage13 = pipelet("Stage13", OneToSeqRev "13", basicRouter, number, -1)
-let stage14 = pipelet("Stage14", OneToSeqRev "14", basicRouter, number, -1)
-let stage15 = pipelet("Stage15", OneToSeqRev "15", basicRouter, number, -1)
-let stage16 = pipelet("Stage16", OneToSeqRev "16", basicRouter, number, -1)
-let stage17 = pipelet("Stage17", OneToSeqRev "17", basicRouter, number, -1)
-let stage18 = pipelet("Stage18", OneToSeqRev "18", basicRouter, number, -1)
-let stage19 = pipelet("Stage19", OneToSeqRev "19", basicRouter, number, -1)
-let stage20 = pipelet("Stage20", OneToSeqRev "20", basicRouter, number, -1)
 let final = pipelet("Final", countthis, basicRouter, number, -1)
 
-//construction is long winded as there are no symbolic ops yet...
-stage1.Attach(stage2)
-stage2.Attach(stage3)
-stage3.Attach(stage4)
-stage4.Attach(stage5)
-stage5.Attach(stage6)
-stage6.Attach(stage7)
-stage7.Attach(stage8)
-stage8.Attach(stage9)
-stage9.Attach(stage10)
-stage10.Attach(stage11)
-stage11.Attach(stage12)
-stage12.Attach(stage13)
-stage13.Attach(stage14)
-stage14.Attach(stage15)
-stage15.Attach(stage16)
-stage16.Attach(stage17)
-stage17.Attach(stage18)
-stage18.Attach(stage19)
-stage19.Attach(stage20)
-stage20.Attach(final)
+stage1 
+++> stage2
+++> stage3
+++> stage4 
+++> stage4 
+++> stage5 
+++> stage6 
+++> stage7 
+++> stage8 
+++> stage9 
+++> stage10 
+++> final 
+++> {new IPipeletInput<_> with member this.Post payload = () }|> ignore
 
-// note object expression to fake up last stage as no routing 
-// will take place if nothing is attached to final stage
-// at the moment this is an optimisation i.e. if there id nothing attached
-// then why transform, let alone route, nee to think about use cases on this....
-final.Attach(  {new IPipeletInput<_> with member this.Post payload = () })
-   
-let generateCircularSeq (lst:'a list) = 
-    let rec next () = 
-        seq {
-            for element in lst do
-                yield element
-            yield! next()
-        }
-    next()
-    
+//remove stage2 from stage1
+//stage1 -+> stage2 |> ignore
+      
 System.AppDomain.CurrentDomain.UnhandledException |> Observable.add (fun x -> 
     printfn "%A" (x.ExceptionObject :?> Exception);Console.ReadKey() |>ignore)
 
@@ -100,5 +82,5 @@ for str in ["John"; "Paul"; "George"; "Ringo"; "Nord"; "Bert"]
 |> Seq.take number
     do  str --> stage1
 
-Console.WriteLine("Press a key to exit.")
+Console.WriteLine("Insert complete waiting for operation to complete.")
 let x = Console.ReadKey()
