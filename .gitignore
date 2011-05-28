@@ -29,11 +29,7 @@ _ReSharper*/
 build/
 deploy/
 docs/
-tools/FAKE/templates/
+nuget/
 test/
-<<<<<<< HEAD
 *_Spliced.*
 *.vsp
-=======
-*_Spliced.*
->>>>>>> added .gitignore
