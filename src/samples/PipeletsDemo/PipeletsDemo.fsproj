@@ -5,17 +5,13 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{1452ef4f-c72f-4678-9716-e5358bb2659a}</ProjectGuid>
+    <ProjectGuid>{a703f411-c739-4fb8-a411-7cf30f327223}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>TestClient</RootNamespace>
-    <AssemblyName>TestClient</AssemblyName>
+    <RootNamespace>Demo</RootNamespace>
+    <AssemblyName>PipeletsDemo</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
-    <Name>TestClient</Name>
-    <SccProjectName>Svn</SccProjectName>
-    <SccProvider>SubversionScc</SccProvider>
-    <SccAuxPath>Svn</SccAuxPath>
-    <SccLocalPath>Svn</SccLocalPath>
+    <Name>PipeletsDemo</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -26,7 +22,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
-    <DocumentationFile>bin\Debug\TestClient.XML</DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugType>pdbonly</DebugType>
@@ -36,7 +33,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
-    <DocumentationFile>bin\Release\TestClient.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\Demo.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -46,12 +43,12 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="testclient.fs" />
+    <Compile Include="program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\flack\Flack.fsproj">
-      <Name>Flack</Name>
-      <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
+    <ProjectReference Include="..\..\lib\pipelets\Pipelets.fsproj">
+      <Name>Pipelets</Name>
+      <Project>{49aae0c3-7102-4b7d-8b41-6c899dcb4675}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

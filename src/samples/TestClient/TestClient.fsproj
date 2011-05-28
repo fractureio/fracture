@@ -5,13 +5,21 @@
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{a703f411-c739-4fb8-a411-7cf30f327223}</ProjectGuid>
+    <ProjectGuid>{1452ef4f-c72f-4678-9716-e5358bb2659a}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Demo</RootNamespace>
-    <AssemblyName>PipeletsDemo</AssemblyName>
+    <RootNamespace>TestClient</RootNamespace>
+    <AssemblyName>TestClient</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
-    <Name>PipeletsDemo</Name>
+    <Name>TestClient</Name>
+    <SccProjectName>
+    </SccProjectName>
+    <SccProvider>
+    </SccProvider>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccLocalPath>
+    </SccLocalPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
     <DebugSymbols>true</DebugSymbols>
@@ -22,8 +30,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
-    <DocumentationFile>
-    </DocumentationFile>
+    <DocumentationFile>bin\Debug\TestClient.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <DebugType>pdbonly</DebugType>
@@ -33,7 +40,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>x86</PlatformTarget>
-    <DocumentationFile>bin\Release\Demo.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\TestClient.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -43,12 +50,12 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="program.fs" />
+    <Compile Include="testclient.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Pipelets\Pipelets.fsproj">
-      <Name>Pipelets</Name>
-      <Project>{49aae0c3-7102-4b7d-8b41-6c899dcb4675}</Project>
+    <ProjectReference Include="..\..\lib\flack\Flack.fsproj">
+      <Name>Flack</Name>
+      <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

@@ -58,7 +58,7 @@
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="Pipelets">
-      <HintPath>..\..\lib\Pipelets.dll</HintPath>
+      <HintPath>..\..\..\lib\Pipelets.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
