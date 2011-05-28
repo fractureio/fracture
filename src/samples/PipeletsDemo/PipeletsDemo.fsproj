@@ -44,9 +44,9 @@
     <Compile Include="program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\pipelets\Pipelets.fsproj">
-      <Name>Pipelets</Name>
-      <Project>{49aae0c3-7102-4b7d-8b41-6c899dcb4675}</Project>
+    <ProjectReference Include="..\..\lib\flack\Flack.fsproj">
+      <Name>Flack</Name>
+      <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

@@ -5,8 +5,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{F2F2
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{2A2CCEB1-E63A-4DDF-8B6F-4DFA04AC181F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Pipelets", "src\lib\pipelets\Pipelets.fsproj", "{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Flack", "src\lib\flack\Flack.fsproj", "{020697D7-24A3-4CE4-A326-D2C7C204FFDE}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PipeletsDemo", "src\samples\PipeletsDemo\PipeletsDemo.fsproj", "{A703F411-C739-4FB8-A411-7CF30F327223}"
@@ -25,16 +23,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Release|Any CPU.Build.0 = Release|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{49AAE0C3-7102-4B7D-8B41-6C899DCB4675}.Release|x86.ActiveCfg = Release|Any CPU
 		{020697D7-24A3-4CE4-A326-D2C7C204FFDE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{020697D7-24A3-4CE4-A326-D2C7C204FFDE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{020697D7-24A3-4CE4-A326-D2C7C204FFDE}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU

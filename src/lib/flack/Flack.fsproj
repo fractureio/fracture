@@ -33,6 +33,7 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <Compile Include="Pipelets.fs" />
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="BocketPool.fs" />
     <Compile Include="FlackCommon.fs" />
@@ -48,13 +49,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Web.ApplicationServices" />
     <Reference Include="System.Web.Services" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\pipelets\Pipelets.fsproj">
-      <Name>Pipelets</Name>
-      <Project>{49aae0c3-7102-4b7d-8b41-6c899dcb4675}</Project>
-      <Private>True</Private>
-    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
