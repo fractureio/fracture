@@ -1,4 +1,4 @@
-﻿module fracture
+﻿module Fracture.Pipelets
 open System
 open System.Threading
 open System.Reflection
@@ -10,7 +10,7 @@ type IPipeletInput<'a> =
 type Message<'a> =
 | Payload of 'a
 
-type pipelet<'a,'b>(name:string, transform, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, maxcount, maxwait:int)= 
+type Pipelet<'a,'b>(name:string, transform, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, maxcount, maxwait:int)= 
         
     let routes = ref List.empty<IPipeletInput<'b>>
     let ss  = new SemaphoreSlim(maxcount, maxcount);
@@ -51,8 +51,8 @@ type pipelet<'a,'b>(name:string, transform, router: seq<IPipeletInput<'b>> * 'b 
         let current = !routes
         routes := List.filter (fun el -> el <> stage) current
 
-let inline (<--) (m:pipelet<_,_>) msg = (m :> IPipeletInput<_>).Post(msg)
-let inline (-->) msg (m:pipelet<_,_>)= (m :> IPipeletInput<_>).Post(msg)
+let inline (<--) (m:Pipelet<_,_>) msg = (m :> IPipeletInput<_>).Post(msg)
+let inline (-->) msg (m:Pipelet<_,_>)= (m :> IPipeletInput<_>).Post(msg)
 
-let inline (++>) (a:pipelet<_,_>) b = a.Attach(b);b
-let inline (-+>) (a:pipelet<_,_>) b = a.Detach(b);b
+let inline (++>) (a:Pipelet<_,_>) b = a.Attach(b);b
+let inline (-+>) (a:Pipelet<_,_>) b = a.Detach(b);b

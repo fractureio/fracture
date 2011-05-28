@@ -44,8 +44,8 @@
     <Compile Include="testclient.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\lib\flack\Flack.fsproj">
-      <Name>Flack</Name>
+    <ProjectReference Include="..\..\lib\fracture\Fracture.fsproj">
+      <Name>Fracture</Name>
       <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
       <Private>True</Private>
     </ProjectReference>

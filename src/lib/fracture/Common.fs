@@ -1,4 +1,4 @@
-﻿module FlackCommon
+﻿module Fracture.Common
 open System
 open System.Net.Sockets
 open SocketExtensions

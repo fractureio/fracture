@@ -1,8 +1,8 @@
-﻿module pipeletsdemo
+﻿module Pipeletsdemo
 open System
 open System.Diagnostics
 open System.Threading
-open fracture
+open Fracture.Pipelets
 
 let reverse (s:string) = 
     new string(s |> Seq.toArray |> Array.rev)
@@ -44,17 +44,17 @@ let generateCircularSeq (s) =
         }
     next()
              
-let stage1 = pipelet("Stage1", OneToSeqRev "1", basicRouter, number, -1)
-let stage2 = pipelet("Stage2", OneToSeqRev "2", basicRouter, number, -1)
-let stage3 = pipelet("Stage3", OneToSeqRev "3", basicRouter, number, -1)
-let stage4 = pipelet("Stage4", OneToSeqRev "4", basicRouter, number, -1)
-let stage5 = pipelet("Stage5", OneToSeqRev "5", basicRouter, number, -1)
-let stage6 = pipelet("Stage6", OneToSeqRev "6", basicRouter, number, -1)
-let stage7 = pipelet("Stage7", OneToSeqRev "7", basicRouter, number, -1)
-let stage8 = pipelet("Stage8", OneToSeqRev "8", basicRouter, number, -1)
-let stage9 = pipelet("Stage9", OneToSeqRev "9", basicRouter, number, -1)
-let stage10 = pipelet("Stage10", OneToSeqRev "10", basicRouter, number, -1)
-let final = pipelet("Final", countthis, basicRouter, number, -1)
+let stage1 = Pipelet("Stage1", OneToSeqRev "1", basicRouter, number, -1)
+let stage2 = Pipelet("Stage2", OneToSeqRev "2", basicRouter, number, -1)
+let stage3 = Pipelet("Stage3", OneToSeqRev "3", basicRouter, number, -1)
+let stage4 = Pipelet("Stage4", OneToSeqRev "4", basicRouter, number, -1)
+let stage5 = Pipelet("Stage5", OneToSeqRev "5", basicRouter, number, -1)
+let stage6 = Pipelet("Stage6", OneToSeqRev "6", basicRouter, number, -1)
+let stage7 = Pipelet("Stage7", OneToSeqRev "7", basicRouter, number, -1)
+let stage8 = Pipelet("Stage8", OneToSeqRev "8", basicRouter, number, -1)
+let stage9 = Pipelet("Stage9", OneToSeqRev "9", basicRouter, number, -1)
+let stage10 = Pipelet("Stage10", OneToSeqRev "10", basicRouter, number, -1)
+let final = Pipelet("Final", countthis, basicRouter, number, -1)
 
 stage1 
 ++> stage2

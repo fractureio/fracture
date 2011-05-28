@@ -1,4 +1,4 @@
-﻿namespace Flack
+﻿namespace Fracture
 open System
 open System.Net
 open System.Net.Sockets
@@ -6,7 +6,7 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 open SocketExtensions
 open System.Reflection
-open FlackCommon
+open Common
 
 ///Creates a new TcpClient using the specified parameters
 type TcpClient(ipendpoint, poolSize, size) =
