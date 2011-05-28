@@ -1,3 +1,1 @@
 Flack is an F# based socket implementation for high speed high throughput applications, it is built on top of the SocketAsyncEventArgs pattern, this minimises memory fragmentation that is common in the IAsync pattern.
-
-This project will later be integrated into frack: https://github.com/panesofglass/frack
