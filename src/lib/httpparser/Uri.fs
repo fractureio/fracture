@@ -1,4 +1,4 @@
-﻿module HttpParser.UriParser 
+﻿module HttpParser.Uri
 
 open System
 open FParsec.Primitives

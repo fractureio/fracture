@@ -36,7 +36,7 @@
     <Compile Include="Hex.fs" />
     <Compile Include="Primitives.fs" />
     <Compile Include="CharParsers.fs" />
-    <Compile Include="UriParser.fs" />
+    <Compile Include="Uri.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
