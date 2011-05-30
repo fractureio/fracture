@@ -34,6 +34,7 @@
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <Compile Include="Hex.fs" />
+    <Compile Include="Primitives.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">

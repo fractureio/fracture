@@ -32,8 +32,9 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Compile Include="HexTest.fs" />
     <None Include="packages.config" />
+    <Compile Include="HexTest.fs" />
+    <Compile Include="PrimitivesTest.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
