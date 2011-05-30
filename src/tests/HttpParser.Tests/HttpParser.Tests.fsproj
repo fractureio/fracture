@@ -35,6 +35,7 @@
     <None Include="packages.config" />
     <Compile Include="HexTest.fs" />
     <Compile Include="PrimitivesTest.fs" />
+    <Compile Include="CharParsersTest.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
