@@ -37,6 +37,7 @@
     <Compile Include="Primitives.fs" />
     <Compile Include="CharParsers.fs" />
     <Compile Include="Uri.fs" />
+    <Compile Include="Http.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
