@@ -62,6 +62,15 @@ Target "BuildApp" (fun _ ->
             Guid = "020697d7-24a3-4ce4-a326-d2c7c204ffde"
             OutputFileName = "./src/lib/fracture/AssemblyInfo.fs" })
 
+    AssemblyInfo (fun p ->
+        {p with 
+            CodeLanguage = FSharp
+            AssemblyVersion = version
+            AssemblyTitle = "HttpParser"
+            AssemblyDescription = "An HTTP and URI parser combinator library."
+            Guid = "13571762-E1C9-492A-9141-37AA0094759A"
+            OutputFileName = "./src/lib/httpparser/AssemblyInfo.fs" })
+
     MSBuildRelease buildDir "Build" appReferences
         |> Log "AppBuild-Output: "
 )
@@ -105,7 +114,7 @@ Target "BuildNuGet" (fun _ ->
     CleanDirs [nugetDir; nugetLibDir; nugetDocsDir]
 
     XCopy (docsDir |> FullName) nugetDocsDir
-    [buildDir + "Fracture.dll"]
+    [buildDir + "Fracture.dll"; buildDir + "HttpParser.dll"]
         |> CopyTo nugetLibDir
 
     NuGet (fun p -> 
