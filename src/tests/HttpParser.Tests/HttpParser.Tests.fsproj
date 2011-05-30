@@ -37,6 +37,7 @@
     <Compile Include="PrimitivesTest.fs" />
     <Compile Include="CharParsersTest.fs" />
     <Compile Include="UriTest.fs" />
+    <Compile Include="HttpTestRequests.fs" />
     <Compile Include="HttpTest.fs" />
   </ItemGroup>
   <ItemGroup>
