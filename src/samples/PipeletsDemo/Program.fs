@@ -1,15 +1,16 @@
-﻿module Pipeletsdemo
+﻿module PipeletsDemo
+
 open System
 open System.Diagnostics
 open System.Threading
 open Fracture.Pipelets
 
 let reverse (s:string) = 
-    new string(s |> Seq.toArray |> Array.rev)
+    String(s |> Seq.toArray |> Array.rev)
 
 let oneToSingleton a b f=
-        let result = b |> f 
-        result |> Seq.singleton
+    let result = b |> f 
+    result |> Seq.singleton
 
 /// total number to run through test cycle
 let number = 100000
@@ -25,7 +26,7 @@ let countthis (a:String) =
         printfn "Items input: %d" number
         printfn "Time per item: %A ms (Elapsed Time / Number of items)" (TimeSpan.FromTicks(sw.ElapsedTicks / int64 number).TotalMilliseconds)
         printfn "Press a key to exit."
-    counter|> Seq.singleton
+    counter |> Seq.singleton
 
 let OneToSeqRev a b = 
     //Console.WriteLine(sprintf "stage: %s item: %s" a b)
@@ -68,7 +69,7 @@ stage1
 ++> stage9 
 ++> stage10 
 ++> final 
-++> {new IPipeletInput<_> with member this.Post payload = () }|> ignore
+++> {new IPipeletInput<_> with member this.Post payload = () } |> ignore
 
 //remove stage2 from stage1
 //stage1 -+> stage2 |> ignore

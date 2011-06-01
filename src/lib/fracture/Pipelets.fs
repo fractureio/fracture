@@ -7,8 +7,7 @@ open System.Reflection
 type IPipeletInput<'a> =
     abstract Post: 'a -> unit
 
-type Message<'a> =
-| Payload of 'a
+type Message<'a> = Payload of 'a
 
 type Pipelet<'a,'b>(name:string, transform, router: seq<IPipeletInput<'b>> * 'b -> seq<IPipeletInput<'b>>, maxcount, maxwait:int)= 
         
