@@ -34,7 +34,8 @@ let OneToSeqRev a b =
 
 /// Simply picks the first route
 let basicRouter messages (routes:'a IPipeletInput seq) =
-    let route = routes |> Seq.head in messages |> Seq.iter (fun msg -> do route.Post msg)
+    if routes |> Seq.isEmpty then ()
+    else let route = routes |> Seq.head in messages |> Seq.iter (fun msg -> do route.Post msg)
 
 let generateCircularSeq (s) = 
     let rec next () = 
