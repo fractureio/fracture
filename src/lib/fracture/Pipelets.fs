@@ -30,9 +30,7 @@ type Pipelet<'a,'b>(name:string, transform, router:'b seq -> 'b IPipeletInput se
             let! msg = inbox.Receive()
             ss.Release() |> ignore
             try
-                match !routes with
-                | [] ->()
-                | _ as routes -> msg |> transform |> router <| routes
+                msg |> transform |> router <| !routes
                 return! loop()
             with //force loop resume on error
             | ex -> 
