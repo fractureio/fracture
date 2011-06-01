@@ -18,7 +18,7 @@ let number = 100000
 /// hack to record when we are done
 let counter = ref 0
 let sw = new Stopwatch()
-let countthis (a:String) =
+let countThis (a:String) =
     do Interlocked.Increment(counter) |> ignore
     if !counter % number = 0 then 
         sw.Stop()
@@ -29,12 +29,12 @@ let countthis (a:String) =
     counter |> Seq.singleton
 
 let OneToSeqRev a b = 
-    //Console.WriteLine(sprintf "stage: %s item: %s" a b)
+    printf "stage: %s item: %s" a b
     oneToSingleton a b reverse 
 
 /// Simply picks the first route
-let basicRouter( r, i) =
-    r|> Seq.head |> Seq.singleton
+let basicRouter (r, i) =
+    r |> Seq.head |> Seq.singleton
 
 let generateCircularSeq (s) = 
     let rec next () = 
@@ -45,17 +45,17 @@ let generateCircularSeq (s) =
         }
     next()
              
-let stage1 = Pipelet("Stage1", OneToSeqRev "1", basicRouter, number, -1)
-let stage2 = Pipelet("Stage2", OneToSeqRev "2", basicRouter, number, -1)
-let stage3 = Pipelet("Stage3", OneToSeqRev "3", basicRouter, number, -1)
-let stage4 = Pipelet("Stage4", OneToSeqRev "4", basicRouter, number, -1)
-let stage5 = Pipelet("Stage5", OneToSeqRev "5", basicRouter, number, -1)
-let stage6 = Pipelet("Stage6", OneToSeqRev "6", basicRouter, number, -1)
-let stage7 = Pipelet("Stage7", OneToSeqRev "7", basicRouter, number, -1)
-let stage8 = Pipelet("Stage8", OneToSeqRev "8", basicRouter, number, -1)
-let stage9 = Pipelet("Stage9", OneToSeqRev "9", basicRouter, number, -1)
-let stage10 = Pipelet("Stage10", OneToSeqRev "10", basicRouter, number, -1)
-let final = Pipelet("Final", countthis, basicRouter, number, -1)
+let stage1 = new Pipelet<_,_>("Stage1", OneToSeqRev "1", basicRouter, number, -1)
+let stage2 = new Pipelet<_,_>("Stage2", OneToSeqRev "2", basicRouter, number, -1)
+let stage3 = new Pipelet<_,_>("Stage3", OneToSeqRev "3", basicRouter, number, -1)
+let stage4 = new Pipelet<_,_>("Stage4", OneToSeqRev "4", basicRouter, number, -1)
+let stage5 = new Pipelet<_,_>("Stage5", OneToSeqRev "5", basicRouter, number, -1)
+let stage6 = new Pipelet<_,_>("Stage6", OneToSeqRev "6", basicRouter, number, -1)
+let stage7 = new Pipelet<_,_>("Stage7", OneToSeqRev "7", basicRouter, number, -1)
+let stage8 = new Pipelet<_,_>("Stage8", OneToSeqRev "8", basicRouter, number, -1)
+let stage9 = new Pipelet<_,_>("Stage9", OneToSeqRev "9", basicRouter, number, -1)
+let stage10 = new Pipelet<_,_>("Stage10", OneToSeqRev "10", basicRouter, number, -1)
+let final = new Pipelet<_,_>("Final", countThis, basicRouter, number, -1)
 
 stage1 
 ++> stage2
@@ -75,7 +75,7 @@ stage1
 //stage1 -+> stage2 |> ignore
       
 System.AppDomain.CurrentDomain.UnhandledException |> Observable.add (fun x -> 
-    printfn "%A" (x.ExceptionObject :?> Exception);Console.ReadKey() |>ignore)
+    printfn "%A" (x.ExceptionObject :?> Exception); Console.ReadKey() |> ignore)
 
 sw.Start()
 for str in ["John"; "Paul"; "George"; "Ringo"; "Nord"; "Bert"] 
@@ -83,5 +83,5 @@ for str in ["John"; "Paul"; "George"; "Ringo"; "Nord"; "Bert"]
 |> Seq.take number
     do  str --> stage1
 
-Console.WriteLine("Insert complete waiting for operation to complete.")
+printfn "Insert complete waiting for operation to complete."
 let x = Console.ReadKey()
