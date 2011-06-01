@@ -29,12 +29,12 @@ let countThis (a:String) =
     counter |> Seq.singleton
 
 let OneToSeqRev a b = 
-    printf "stage: %s item: %s" a b
+    //printfn "stage: %s item: %s" a b
     oneToSingleton a b reverse 
 
 /// Simply picks the first route
-let basicRouter (r, i) =
-    r |> Seq.head |> Seq.singleton
+let basicRouter messages (routes:'a IPipeletInput seq) =
+    let route = routes |> Seq.head in messages |> Seq.iter (fun msg -> do route.Post msg)
 
 let generateCircularSeq (s) = 
     let rec next () = 
