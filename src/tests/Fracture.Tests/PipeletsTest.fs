@@ -12,15 +12,11 @@ let singletonRouter messages (routes:'a IPipeletInput seq) =
 [<Test>]
 let ``test should iterate once``() =
     let counter = ref 0
-    let finished = ref false
-    let finisher msg =
+    let run msg =
         incr counter
-        finished := true
         Seq.singleton msg
     
-    let finish = new Pipelet<int,int>("Finish", finisher, singletonRouter, 1, -1)
-    finish ++> { new IPipeletInput<_> with member this.Post payload = () } |> ignore
-
+    let finish = new Pipelet<int,int>("Finish", run, singletonRouter, 1, -1)
     async {
         finish.Post 1
         // Give the post a chance to complete
@@ -30,16 +26,12 @@ let ``test should iterate once``() =
 
 [<Test>]
 let ``test should finish after one iteration``() =
-    let counter = ref 0
     let finished = ref false
-    let finisher msg =
-        incr counter
+    let run msg =
         finished := true
         Seq.singleton msg
     
-    let finish = new Pipelet<int,int>("Finish", finisher, singletonRouter, 1, -1)
-    finish ++> { new IPipeletInput<_> with member this.Post payload = () } |> ignore
-
+    let finish = new Pipelet<int,int>("Finish", run, singletonRouter, 1, -1) 
     async {
         finish.Post 1
         // Give the post a chance to complete
