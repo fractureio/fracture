@@ -91,10 +91,16 @@ let roundRobin<'a> =
         if routes |> Seq.isEmpty then ()
         else 
             let route =  makeseqskipper routes
-            messages |> Seq.iter (fun msg -> do route |> Seq.iter (fun (s:IPipeletInput<'a>) -> s.Post msg) )
+            messages |> Seq.iter (fun msg -> do route |> Seq.iter (fun (s:'a IPipeletInput) -> s.Post msg) )
     createroundrobin
 
 /// Simply picks the first route
 let basicRouter messages (routes:'a IPipeletInput seq) =
     if routes |> Seq.isEmpty then ()
     else let route = routes |> Seq.head in messages |> Seq.iter (fun msg -> do route.Post msg)
+
+//sends the message to all attached routes
+let multicastRouter messages (routes:'a IPipeletInput seq) =
+    if routes |> Seq.isEmpty then ()
+    else messages |> Seq.iter (fun msg -> do routes |> Seq.iter (fun (s:'a IPipeletInput) -> s.Post msg) )
+    
