@@ -10,14 +10,16 @@ type IPipeletInput<'a> =
     abstract Post: 'a -> unit
 
 /// A wrapper for pipeline payloads.
-type Message<'a> = Payload of 'a
+type Message<'a, 'b> =
+    | Payload of 'a
+    | Attach of 'b IPipeletInput
+    | Detach of 'b IPipeletInput
 
 /// A pipelet is a named, write-only agent that processes incoming messages
 /// then publishes the results to the next pipeline stage(s).
-type Pipelet<'a,'b>(name:string, transform, router:'b seq -> 'b IPipeletInput seq -> unit, maxcount, maxwait:int) = 
+type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IPipeletInput seq -> unit, maxcount, maxwait:int) = 
 
     let disposed = ref false
-    let routes = ref List.empty<IPipeletInput<'b>>
     let ss = new SemaphoreSlim(maxcount, maxcount)
 
     let dispose disposing =
@@ -26,45 +28,45 @@ type Pipelet<'a,'b>(name:string, transform, router:'b seq -> 'b IPipeletInput se
             disposed := true
         
     let mailbox = MailboxProcessor.Start(fun inbox ->
-        let rec loop() = async {
+        let rec loop routes = async {
             let! msg = inbox.Receive()
-            ss.Release() |> ignore
-            try
-                msg |> transform |> router <| !routes
-                return! loop()
-            with //force loop resume on error
-            | ex -> 
-                // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
-                printf "%A Error: %A" DateTime.Now.TimeOfDay ex.Message
-                return! loop()
+            match msg with
+            | Payload(data) ->
+                ss.Release() |> ignore
+                try
+                    data |> transform |> router <| routes
+                    return! loop routes
+                with //force loop resume on error
+                | ex -> 
+                    // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
+                    printf "%A Error: %A" DateTime.Now.TimeOfDay ex.Message
+                    return! loop routes
+            | Attach(stage) -> return! loop (stage::routes)
+            | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
         }
-        loop())
+        loop [])
 
-    let post payload =
+    let post data =
         if ss.Wait(maxwait) then
-            mailbox.Post(payload)
+            mailbox.Post(Payload data)
         // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
-        else printf "%A Overflow: %A" DateTime.Now.TimeOfDay payload  //overflow
+        else printf "%A Overflow: %A" DateTime.Now.TimeOfDay data //overflow
 
     /// Gets the name of the pipelet.
     member this.Name with get() = name
 
     /// Attaches a subsequent stage.
-    member this.Attach(stage) =
-        let current = !routes
-        routes := stage :: current
+    member this.Attach(stage) = mailbox.Post(Attach stage)
         
     /// Detaches a subsequent stage.
-    member this.Detach (stage) =
-        let current = !routes
-        routes := List.filter (fun el -> el <> stage) current
+    member this.Detach (stage) = mailbox.Post(Detach stage)
 
     /// Posts a message to the pipelet agent.
-    member this.Post(payload) = post payload
+    member this.Post(data) = post data
 
     interface IPipeletInput<'a> with
         /// Posts a message to the pipelet input.
-        member this.Post(payload) = post payload
+        member this.Post(data) = post data
 
     interface IDisposable with
         /// Disposes the pipelet, along with the encapsulated SemaphoreSlim.
