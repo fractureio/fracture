@@ -4,11 +4,6 @@ open Fracture.Pipelets
 open NUnit.Framework
 open FsUnit
 
-let singletonRouter messages (routes:'a IPipeletInput seq) =
-    let msg = Seq.head messages
-    let route = Seq.head routes
-    route.Post msg
-
 [<Test>]
 let ``test should iterate once``() =
     let counter = ref 0
@@ -16,7 +11,7 @@ let ``test should iterate once``() =
         incr counter
         Seq.singleton msg
     
-    let finish = new Pipelet<int,int>("Finish", run, singletonRouter, 1, -1)
+    let finish = new Pipelet<int,int>("Finish", run, basicRouter, 1, -1)
     async {
         finish.Post 1
         // Give the post a chance to complete
@@ -31,7 +26,7 @@ let ``test should finish after one iteration``() =
         finished := true
         Seq.singleton msg
     
-    let finish = new Pipelet<int,int>("Finish", run, singletonRouter, 1, -1) 
+    let finish = new Pipelet<int,int>("Finish", run, basicRouter, 1, -1) 
     async {
         finish.Post 1
         // Give the post a chance to complete
