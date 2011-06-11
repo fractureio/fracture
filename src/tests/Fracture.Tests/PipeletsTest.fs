@@ -1,4 +1,4 @@
-module Fracture.Pipelets.Tests
+module Fracture.Tests.PipeletsTest
 
 open Fracture.Pipelets
 open NUnit.Framework
