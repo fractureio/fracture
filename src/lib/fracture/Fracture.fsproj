@@ -33,6 +33,7 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <Compile Include="AsyncOperators.fs" />
     <Compile Include="Pipelets.fs" />
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="BocketPool.fs" />
