@@ -1,12 +1,12 @@
-﻿module HttpParser.Http
+﻿module Fracture.Http.Http
 
 open System
 open System.Xml.Linq
 open FParsec.Primitives
 open FParsec.CharParsers
-open HttpParser.Primitives
-open HttpParser.CharParsers
-open HttpParser.Uri
+open Primitives
+open CharParsers
+open Uri
 
 type HttpRequestMethod =
   | GET

@@ -1,10 +1,10 @@
-﻿module HttpParser.Tests.CharParsersTest
+﻿module Fracture.Http.Tests.CharParsersTest
 
 open System
 open FParsec.CharParsers
-open HttpParser.Hex
-open HttpParser.Primitives
-open HttpParser.CharParsers
+open Fracture.Http.Hex
+open Fracture.Http.Primitives
+open Fracture.Http.CharParsers
 open NUnit.Framework
 open FsUnit
 

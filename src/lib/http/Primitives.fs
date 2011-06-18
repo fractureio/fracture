@@ -1,8 +1,8 @@
-﻿module HttpParser.Primitives
+﻿module Fracture.Http.Primitives
 
 open System
 open FParsec.Primitives
-open HttpParser.Hex
+open Fracture.Http.Hex
 
 module String =
   let ofCharList (input:char list) = String(Array.ofList input)

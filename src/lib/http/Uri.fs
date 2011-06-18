@@ -1,10 +1,10 @@
-﻿module HttpParser.Uri
+﻿module Fracture.Http.Uri
 
 open System
 open FParsec.Primitives
 open FParsec.CharParsers
-open HttpParser.Primitives
-open HttpParser.CharParsers
+open Primitives
+open CharParsers
 
 type UriKind =
   | AbsoluteUri of UriPart list
@@ -65,15 +65,15 @@ let opaquePart<'a> : Parser<UriPart list,'a> = (fun u1 u2 -> [Host !!(u1::u2)]) 
 let hierPart<'a> : Parser<UriPart list,'a> =
   (fun a b c -> a @ [QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)])
   <!> (netPath <|> ((fun a -> [Path !!a]) <!> uriAbsPath))
-  <*> opt (cons <!> qmark <*> uriQuery)
-  <*> opt (cons <!> hash <*> uriFragment)
+  <*> opt (qmark *> uriQuery)
+  <*> opt (hash *> uriFragment)
 
 let absoluteUri<'a> : Parser<UriKind,'a> = (fun a b -> AbsoluteUri(a::b)) <!> scheme .>> colon <*> (hierPart <|> opaquePart)
 let relativeUri<'a> : Parser<UriKind,'a> =
   (fun a b c -> RelativeUri [Path !!a;QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)])
   <!> (uriAbsPath <|> relPath)
-  <*> opt (cons <!> qmark <*> uriQuery)
-  <*> opt (cons <!> hash <*> uriFragment)
+  <*> opt (qmark *> uriQuery)
+  <*> opt (hash *> uriFragment)
 
-let fragmentRef<'a> : Parser<UriKind,'a> = (fun a b -> FragmentRef(Fragment !!(a::b))) <!> hash <*> uriFragment
+let fragmentRef<'a> : Parser<UriKind,'a> = (fun f -> FragmentRef(Fragment !!f)) <!> hash *> uriFragment
 let uriReference<'a> : Parser<UriKind,'a> = absoluteUri <|> relativeUri <|> fragmentRef

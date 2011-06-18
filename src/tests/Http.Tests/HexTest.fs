@@ -1,6 +1,6 @@
-﻿module HttpParser.Tests.HexTest
+﻿module Fracture.Http.Tests.HexTest
 
-open HttpParser.Hex
+open Fracture.Http.Hex
 open NUnit.Framework
 open FsUnit
 

@@ -1,6 +1,6 @@
 ﻿/// A hexadecimal converter.
 /// See http://fssnip.net/25
-module HttpParser.Hex
+module Fracture.Http.Hex
 
 open System
 

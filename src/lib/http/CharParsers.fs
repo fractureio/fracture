@@ -1,4 +1,4 @@
-﻿module HttpParser.CharParsers
+﻿module Fracture.Http.CharParsers
 
 open System
 open FParsec.Primitives

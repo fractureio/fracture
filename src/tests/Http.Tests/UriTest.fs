@@ -1,10 +1,10 @@
-﻿module HttpParser.Tests.UriTest
+﻿module Fracture.Http.Tests.UriTest
 
 open System
 open FParsec.Error
 open FParsec.CharParsers
-open HttpParser.CharParsers
-open HttpParser.Uri
+open Fracture.Http.CharParsers
+open Fracture.Http.Uri
 open NUnit.Framework
 open FsUnit
 

@@ -1,4 +1,4 @@
-﻿module HttpParser.Tests.HttpMachineTest
+﻿module Fracture.Http.Tests.HttpTestRequests
 
 open System
 open System.Collections.Generic

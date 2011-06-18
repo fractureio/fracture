@@ -1,12 +1,12 @@
-﻿module HttpParser.Tests.HttpTest
+﻿module Fracture.Http.Tests.HttpTest
 
 open System
 open FParsec.Error
 open FParsec.CharParsers
-open HttpParser.Primitives
-open HttpParser.CharParsers
-open HttpParser.Uri
-open HttpParser.Http
+open Fracture.Http.Primitives
+open Fracture.Http.CharParsers
+open Fracture.Http.Uri
+open Fracture.Http.Http
 open NUnit.Framework
 open FsUnit
 

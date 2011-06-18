@@ -11,6 +11,5 @@
     <projectUrl>http://fractureio.github.com/fracture</projectUrl>
     <licenseUrl>http://github.com/fractureio/fracture/raw/master/LICENSE.txt</licenseUrl>
     <tags>socket networking tcp http fsharp</tags>
-    @dependencies@
-  </metadata>  
+  </metadata>
 </package>

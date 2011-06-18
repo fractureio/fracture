@@ -1,9 +1,9 @@
-﻿module HttpParser.Tests.PrimitivesTest
+﻿module Fracture.Http.Tests.PrimitivesTest
 
 open System
 open FParsec.CharParsers
-open HttpParser.Hex
-open HttpParser.Primitives
+open Fracture.Http.Hex
+open Fracture.Http.Primitives
 open NUnit.Framework
 open FsUnit
 
