@@ -6,12 +6,13 @@ open System.IO
 
 // properties
 let projectName = "Fracture"
-let version = "0.1.2"
+let version = "0.1.3"
 let projectSummary = "Fracture is an F# based socket implementation for high-speed, high-throughput applications."
 let projectDescription = "Fracture is an F# based socket implementation for high-speed, high-throughput applications. It is built on top of SocketAsyncEventArgs, which minimises the memory fragmentation common in the IAsyncResult pattern."
 let authors = ["Dave Thomas";"Ryan Riley"]
 let mail = "ryan.riley@panesofglass.org"
 let homepage = "http://github.com/fractureio/fracture"
+let license = "http://github.com/fractureio/fracture/raw/master/LICENSE.txt"
 let nugetKey = if System.IO.File.Exists "./key.txt" then ReadFileAsString "./key.txt" else ""
 
 // directories
@@ -24,6 +25,7 @@ let nugetDir = "./nuget/"
 let targetPlatformDir = getTargetPlatformDir "4.0.30319"
 let nugetLibDir = nugetDir @@ "lib"
 let nugetDocsDir = nugetDir @@ "docs"
+let fparsecVersion = GetPackageVersion packagesDir "FParsec"
 
 // params
 let target = getBuildParamOrDefault "target" "All"
@@ -127,6 +129,7 @@ Target "BuildNuGet" (fun _ ->
             Description = projectDescription
             Version = version
             OutputPath = nugetDir
+            Dependencies = ["FParsec",RequireExactly fparsecVersion]
             AccessKey = nugetKey
             ToolPath = nugetPath
             Publish = nugetKey <> "" })

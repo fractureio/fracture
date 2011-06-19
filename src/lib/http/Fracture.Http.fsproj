@@ -34,6 +34,7 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <None Include="packages.config" />
     <Compile Include="Hex.fs" />
     <Compile Include="Primitives.fs" />
     <Compile Include="CharParsers.fs" />
@@ -42,10 +43,12 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FParsec">
-      <HintPath>..\..\..\lib\FParsec\FParsec.dll</HintPath>
+      <HintPath>..\..\..\packages\FParsec.0.9.1\lib\net40\FParsec.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="FParsecCS">
-      <HintPath>..\..\..\lib\FParsec\FParsecCS.dll</HintPath>
+      <HintPath>..\..\..\packages\FParsec.0.9.1\lib\net40\FParsecCS.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
