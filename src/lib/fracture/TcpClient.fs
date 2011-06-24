@@ -1,4 +1,5 @@
 ﻿namespace Fracture
+
 open System
 open System.Net
 open System.Net.Sockets
@@ -9,10 +10,10 @@ open System.Reflection
 open Common
 
 ///Creates a new TcpClient using the specified parameters
-type TcpClient(ipendpoint, poolSize, size) =
+type TcpClient(ipEndPoint, poolSize, size) =
 
-    ///Creates a Socket as loopback using specified ipendpoint.
-    let listeningSocket = createSocket(ipendpoint)
+    ///Creates a Socket as loopback using specified IPEndPoint.
+    let listeningSocket = createSocket(ipEndPoint)
     let pool = new BocketPool(poolSize, size)
     let mutable disposed = false
         
@@ -102,13 +103,13 @@ type TcpClient(ipendpoint, poolSize, size) =
         send(listeningSocket, pool.CheckOut, completed, size, msg)
         
     ///Starts connecting with remote server
-    member this.Start(ipendpoint) = 
+    member this.Start(ipEndPoint) = 
         pool.Start(completed)
         let saea = pool.CheckOut()
         //TODO: look into why a minimum of 1 byte has to be set for
         //a connect to be successful
         saea.SetBuffer(saea.Offset, 1)
-        saea.RemoteEndPoint <- ipendpoint
+        saea.RemoteEndPoint <- ipEndPoint
         listeningSocket.ConnectAsyncSafe(completed, saea)
 
     ///Used to close the current listening socket.

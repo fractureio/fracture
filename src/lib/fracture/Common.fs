@@ -1,13 +1,9 @@
 ﻿module Fracture.Common
+
 open System
 open System.Net.Sockets
 open SocketExtensions
 open System.Reflection
-
-[<assembly: AssemblyVersion("0.1.0.*")>] 
-do()
-
-//Common Socket functions
 
 /// Creates a Socket and binds it to specified IPEndpoint, if you want a sytem assigned one Use IPEndPoint(IPAddress.Any, 0)
 let createSocket (ipendpoint) =
