@@ -14,4 +14,7 @@
     <tags>socket networking tcp http fsharp</tags>
     @dependencies@
   </metadata>
+  <files>
+    <file src="..\src\lib\**\*.fs" target="src" />
+  </files>
 </package>

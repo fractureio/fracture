@@ -6,7 +6,7 @@ open System.IO
 
 // properties
 let projectName = "Fracture"
-let version = "0.1.3"
+let version = "0.1.4"
 let projectSummary = "Fracture is an F# based socket implementation for high-speed, high-throughput applications."
 let projectDescription = "Fracture is an F# based socket implementation for high-speed, high-throughput applications. It is built on top of SocketAsyncEventArgs, which minimises the memory fragmentation common in the IAsyncResult pattern."
 let authors = ["Dave Thomas";"Ryan Riley"]
@@ -117,7 +117,9 @@ Target "BuildNuGet" (fun _ ->
 
     XCopy (docsDir |> FullName) nugetDocsDir
     [ buildDir + "Fracture.dll"
+      buildDir + "Fracture.pdb"
       buildDir + "Fracture.Http.dll"
+      buildDir + "Fracture.Http.pdb"
       buildDir + "FParsecCS.dll"
       buildDir + "FParsec.dll" ]
         |> CopyTo nugetLibDir

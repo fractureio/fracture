@@ -5,6 +5,7 @@ open NUnit.Framework
 open FsUnit
 
 [<Test>]
+[<Explicit>]
 let ``test basicRouter should increment once with no attached stages``() =
     let counter = ref 0
     let run msg =
@@ -20,6 +21,7 @@ let ``test basicRouter should increment once with no attached stages``() =
     } |> Async.RunSynchronously
 
 [<Test>]
+[<Explicit>]
 let ``test basicRouter should increment twice with one attached stage``() =
     let counter = ref 0
     let run msg =
@@ -39,6 +41,7 @@ let ``test basicRouter should increment twice with one attached stage``() =
     } |> Async.RunSynchronously
 
 [<Test>]
+[<Explicit>]
 let ``test basicRouter should increment twice with two attached stages``() =
     let counter = ref 0
     let run msg =
@@ -60,6 +63,7 @@ let ``test basicRouter should increment twice with two attached stages``() =
     } |> Async.RunSynchronously
 
 [<Test>]
+[<Explicit>]
 let ``test multicastRouter should increment once for the start and the one attached stage``() =
     let counter = ref 0
     let run msg =
@@ -81,6 +85,7 @@ let ``test multicastRouter should increment once for the start and the one attac
     } |> Async.RunSynchronously
 
 [<Test>]
+[<Explicit>]
 let ``test multicastRouter should increment once for the start and both attached stages``() =
     let counter = ref 0
     let run msg =
@@ -102,6 +107,7 @@ let ``test multicastRouter should increment once for the start and both attached
     } |> Async.RunSynchronously
 
 [<Test>]
+[<Explicit>]
 let ``test multicastRouter should increment once for the start and all attached stages``() =
     let counter = ref 0
     let run msg =

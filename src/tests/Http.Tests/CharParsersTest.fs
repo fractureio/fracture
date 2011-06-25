@@ -57,6 +57,10 @@ let ``test slash parser should parse a '/'``(input) = run slash input
 [<TestCase(" ", ExpectedException=typeof<Exception>)>]
 let ``test qmark parser should parse a '?'``(input) = run qmark input
 
+[<TestCase("@", Result='@')>]
+[<TestCase(" ", ExpectedException=typeof<Exception>)>]
+let ``test qmark parser should parse an at-sign``(input) = run at input
+
 [<TestCase("%20", Result=' ')>]
 [<TestCase("%2F", Result='/')>]
 [<TestCase("%2f", Result='/')>]

@@ -7,9 +7,11 @@ open Primitives
 open CharParsers
 
 type UriKind =
-  | AbsoluteUri of UriPart list
-  | RelativeUri of UriPart list
-  | FragmentRef of UriPart
+  | AbsoluteUri  of UriPart list
+  | RelativeUri  of UriPart list
+  | UriAuthority of UriPart list
+  | FragmentRef  of UriPart
+  | AnyUri
 and UriPart =
   | Scheme      of string
   | UserInfo    of string
@@ -21,7 +23,7 @@ and UriPart =
 
 let mark<'a> : Parser<char,'a> = anyOf "-_.!~*'()"
 let reserved<'a> : Parser<char,'a> = anyOf ";/?:@&=+$,"
-let unreserved<'a> : Parser<char,'a> = asciiLetter <|> mark
+let unreserved<'a> : Parser<char,'a> = asciiLetter <|> digit <|> mark
 let paramChar<'a> : Parser<char,'a> = unreserved <|> escaped <|> anyOf ":@&=+$."
 let uriChar<'a> : Parser<char,'a> = reserved <|> unreserved <|> escaped
 let uriCharNoSlash<'a> : Parser<char,'a> = unreserved <|> escaped <|> anyOf ";?:@&=+$,"
@@ -56,8 +58,8 @@ let scheme<'a> : Parser<UriPart,'a> = (fun a b -> Scheme !!(a::b)) <!> asciiLett
 let hostport<'a> : Parser<UriPart list,'a> =
   (fun a b -> match b with Some(v) -> [Host !!a; Port !!v] | _ -> [Host !!a]) <!> host <*> opt (colon >>. port)
 let server<'a> : Parser<UriPart list,'a> =
-  (fun a b -> match a with Some(info) -> (UserInfo !!info)::b | _ -> b) <!> opt (userInfo .>> pchar '@') <*> hostport
-let uriAuthority<'a> : Parser<UriPart list,'a> = (fun a -> Host !!a) <!> regName |> listify <|> server
+  (fun a b -> match a with Some(info) -> (UserInfo !!info)::b | _ -> b) <!> (opt (userInfo .>> at)) <*> hostport
+let uriAuthority<'a> : Parser<UriPart list,'a> = ((fun a -> Host !!a) <!> regName |> listify) <|> server
 let netPath<'a> : Parser<UriPart list,'a> =
   (fun a b -> match b with Some(path) -> a @ [Path !!path] | _ -> a) <!> skipString "//" *> uriAuthority <*> opt uriAbsPath
 
@@ -75,5 +77,7 @@ let relativeUri<'a> : Parser<UriKind,'a> =
   <*> opt (qmark *> uriQuery)
   <*> opt (hash *> uriFragment)
 
+let authorityRef<'a> : Parser<UriKind, 'a> = UriAuthority <!> uriAuthority
 let fragmentRef<'a> : Parser<UriKind,'a> = (fun f -> FragmentRef(Fragment !!f)) <!> hash *> uriFragment
 let uriReference<'a> : Parser<UriKind,'a> = absoluteUri <|> relativeUri <|> fragmentRef
+let anyUri<'a> : Parser<UriKind, 'a> = (fun _ -> AnyUri) <!> pstring "*"
