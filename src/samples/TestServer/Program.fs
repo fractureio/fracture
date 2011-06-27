@@ -2,6 +2,8 @@
 open System.Net
 open Fracture
 
+System.AppDomain.CurrentDomain.UnhandledException |> Observable.add (fun x -> 
+    printfn "%A" (x.ExceptionObject :?> Exception); Console.ReadKey() |> ignore)
 try
 
     use server = new TcpListener(new IPEndPoint(IPAddress.Loopback, 10003), 50, 512, 100)

@@ -29,9 +29,8 @@ type internal BocketPool(number, size) =
     member this.CheckOut() =
         pool.Take()
     member this.CheckIn(saea) =
-        //ensure the the full range of the buffer is available
-        //this may have changed if the bocket was previously
-        //used for a send or connect operation
+        // ensure the the full range of the buffer is available this may have changed
+        // if the bocket was previously used for a send or connect operation
         if saea.Count < size then 
             saea.SetBuffer(saea.Offset, size)
         pool.Add(saea)
@@ -39,5 +38,3 @@ type internal BocketPool(number, size) =
         pool.Count
     interface IDisposable with
         member this.Dispose() = cleanUp()
-
-////////////////// End of BocketPool definition ////////////////////
