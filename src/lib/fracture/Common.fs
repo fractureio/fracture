@@ -25,8 +25,9 @@ let send( client:Socket, getsaea:unit -> SocketAsyncEventArgs, completed, maxSiz
             saea.UserToken <- client
             Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, tosend)
             saea.SetBuffer(saea.Offset, tosend)
-            client.SendAsyncSafe(completed, saea)
-            loop (offset + tosend)
+            if client.Connected then client.SendAsyncSafe(completed, saea)
+                                     loop (offset + tosend)
+            else Console.WriteLine(sprintf "Not connected to server")
     loop 0  
     
 let aquiredata (args:SocketAsyncEventArgs)= 

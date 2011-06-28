@@ -108,7 +108,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         let saea = pool.CheckOut()
         //TODO: look into why a minimum of 1 byte has to be set for
         //a connect to be successful
-        saea.SetBuffer(saea.Offset, 1)
+        saea.SetBuffer(saea.Offset, 128)
         saea.RemoteEndPoint <- ipEndPoint
         listeningSocket.ConnectAsyncSafe(completed, saea)
 

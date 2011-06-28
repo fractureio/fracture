@@ -46,62 +46,79 @@ type TcpListener(ipendpoint, poolSize, size, backlog) =
             pool.CheckIn(args)
 
     and processAccept (args:SocketAsyncEventArgs) =
-        let sock = args.AcceptSocket
-        if args.SocketError = SocketError.Success then
-            //process newly connected client
-            let endPoint = sock.RemoteEndPoint :?> IPEndPoint
-            let success = clients.TryAdd(endPoint, sock) (*add client to dictionary*)
-            if not success then failwith "client could not be added"
+        try
+            let sock = args.AcceptSocket
+            if args.SocketError = SocketError.Success then
+                //process newly connected client
+                let endPoint = sock.RemoteEndPoint :?> IPEndPoint
+                let success = clients.TryAdd(endPoint, sock) (*add client to dictionary*)
+                if not success then failwith "client could not be added"
 
-            //trigger connected
-            connectedEvent.Trigger(endPoint)
-            args.AcceptSocket <- null (*remove the AcceptSocket because we will be reusing args*)
+                //trigger connected
+                connectedEvent.Trigger(endPoint)
+                args.AcceptSocket <- null (*remove the AcceptSocket because we will be reusing args*)
 
-            //start next accept, *note pool.CheckOut could block
-            do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+                //start next accept, *note pool.CheckOut could block
+                do listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
 
-            //check if data was given on connection
-            if args.BytesTransferred > 0 then
+                //check if data was given on connection
+                if args.BytesTransferred > 0 then
+                    let data = aquiredata args
+                    //trigger received
+                    (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
+                
+                //start receive on accepted client
+                let saea = pool.CheckOut()
+                saea.UserToken <- sock
+                sock.ReceiveAsyncSafe(completed, saea)
+            else 
+                let data = args.SocketError.ToString()
+                Console.WriteLine (sprintf "socket error on accept: %s" data)
+        with
+        |   e ->
+            printfn "%s" e.Message
+            Console.ReadKey() |> ignore
+
+    and processReceive (args:SocketAsyncEventArgs) =
+        try
+            let sock = args.UserToken :?> Socket
+            if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
+                //process received data, check if data was given on connection.
                 let data = aquiredata args
                 //trigger received
                 (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
-                
-            //start receive on accepted client
-            let saea = pool.CheckOut()
-            saea.UserToken <- sock
-            sock.ReceiveAsyncSafe(completed, saea)
-        else args.SocketError.ToString() |> printfn "socket error on accept: %s"
-
-    and processReceive (args:SocketAsyncEventArgs) =
-        let sock = args.UserToken :?> Socket
-        if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
-            //process received data, check if data was given on connection.
-            let data = aquiredata args
-            //trigger received
-            (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
-            //get on with the next receive
-            let saea = pool.CheckOut()
-            saea.UserToken <- sock
-            sock.ReceiveAsyncSafe( completed, saea)
-        else
-            //Something went wrong or the client stopped sending bytes.
-            sock.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
-            closeConnection sock
+                //get on with the next receive
+                let saea = pool.CheckOut()
+                saea.UserToken <- sock
+                sock.ReceiveAsyncSafe( completed, saea)
+            else
+                //Something went wrong or the client stopped sending bytes.
+                sock.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
+                closeConnection sock
+        with
+        |   e ->
+            printfn "%s" e.Message
+            Console.ReadKey() |> ignore
 
     and processSend (args:SocketAsyncEventArgs) =
-        let sock = args.UserToken :?> Socket
-        match args.SocketError with
-        | SocketError.Success ->
-            let sentData = aquiredata args
-            //notify data sent
-            (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
-        | SocketError.NoBufferSpaceAvailable
-        | SocketError.IOPending
-        | SocketError.WouldBlock ->
-            failwith "Buffer overflow or send buffer timeout" //graceful termination?  
-        | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
+        try
+            let sock = args.UserToken :?> Socket
+            match args.SocketError with
+            | SocketError.Success ->
+                let sentData = aquiredata args
+                //notify data sent
+                (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
+            | SocketError.NoBufferSpaceAvailable
+            | SocketError.IOPending
+            | SocketError.WouldBlock ->
+                failwith "Buffer overflow or send buffer timeout" //graceful termination?  
+            | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
-    
+        with
+        |   e ->
+            printfn "%s" e.Message
+            Console.ReadKey() |> ignore
+
     ///This event is fired when a client connects.
     [<CLIEvent>]member this.Connected = connectedEvent.Publish
     ///This event is fired when a client disconnects.
