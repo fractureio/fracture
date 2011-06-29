@@ -18,15 +18,15 @@ let closeConnection (sock:Socket) =
 let send( client:Socket, getsaea:unit -> SocketAsyncEventArgs, completed, maxSize, msg:byte[])= 
     let rec loop offset =
         if offset < msg.Length then
-            let tosend =
+            let ammounttosend =
                 let remaining = msg.Length - offset in
                 if remaining > maxSize then maxSize else remaining
             let saea = getsaea()
             saea.UserToken <- client
-            Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, tosend)
-            saea.SetBuffer(saea.Offset, tosend)
+            Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, ammounttosend)
+            saea.SetBuffer(saea.Offset, ammounttosend)
             if client.Connected then client.SendAsyncSafe(completed, saea)
-                                     loop (offset + tosend)
+                                     loop (offset + ammounttosend)
             else Console.WriteLine(sprintf "Not connected to server")
     loop 0  
     

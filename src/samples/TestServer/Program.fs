@@ -12,13 +12,7 @@ try
 
     server.Received |> Observable.add (fun x -> do Console.WriteLine(sprintf "%A EndPoint: %A bytes received: %i" DateTime.Now.TimeOfDay (snd x) (fst x).Length ))
     
-    let testbuffer = [| 0uy .. 129uy |]
-
-    let sendOnConnect x = 
-        Console.WriteLine(sprintf "%A Endpoint: %A: Connected, sending %i test Bytes" DateTime.Now.TimeOfDay x testbuffer.Length)
-        server.Send(x, testbuffer)
-
-    server.Connected |> Observable.add (fun x -> sendOnConnect x)
+    server.Connected |> Observable.add (fun x -> Console.WriteLine(sprintf "%A Endpoint: %A: Connected" DateTime.Now.TimeOfDay x))
 
     server.Disconnected |> Observable.add (fun x -> Console.WriteLine(sprintf "%A Endpoint %A: Disconnected" DateTime.Now.TimeOfDay x))
 
