@@ -37,47 +37,43 @@ let segment<'a> : Parser<char list,'a> = flatten <!> param <*> many (cons <!> se
 let pathSegments<'a> : Parser<char list,'a> = flatten <!> segment <*> many (cons <!> slash <*> segment)
 let uriAbsPath<'a> : Parser<char list,'a> = cons <!> slash <*> pathSegments
 
-let relPath<'a> : Parser<char list,'a> = (fun hd tl -> match tl with | Some(t) -> hd @ t | _ -> hd) <!> relSegment <*> opt uriAbsPath
+let relPath<'a> : Parser<char list,'a> =
+  pipe2 relSegment (opt uriAbsPath) <| fun hd tl -> match tl with | Some(t) -> hd @ t | _ -> hd
 
 let uriQuery<'a> : Parser<char list,'a> = many uriChar
 let uriFragment<'a> : Parser<char list,'a> = many uriChar
 
 let ipWithDot<'a> : Parser<char list,'a> = many1 digit >>= (fun a -> dot >>= (fun b -> preturn (a @ [b])))
-let ipv4Address<'a> : Parser<char list,'a> = (fun a b -> (List.concat a) @ b) <!> parray 3 ipWithDot <*> many1 digit
+let ipv4Address<'a> : Parser<char list,'a> =  pipe2 (parray 3 ipWithDot) (many1 digit) <| fun a b -> (List.concat a) @ b
 // TODO: prevent a trailing hyphen
-let topLabel<'a> : Parser<char list,'a> = (cons <!> asciiLetter <*> many (alphanum <|> hyphen)) <|> listify asciiLetter 
-let domainLabel<'a> : Parser<char list,'a> = (cons <!> alphanum <*> many (alphanum <|> hyphen)) <|> listify alphanum
-let domain<'a> : Parser<char list,'a> = (fun a b -> a @ [b]) <!> domainLabel <*> dot
-let hostname<'a> : Parser<char list,'a> = (fun a b -> match a with Some(sub) -> sub @ b | _ -> b) <!> opt domain <*> (topLabel .>> opt dot)
+let topLabel<'a> : Parser<char list,'a> = pipe2 asciiLetter (many (alphanum <|> hyphen)) cons <|> listify asciiLetter 
+let domainLabel<'a> : Parser<char list,'a> = pipe2 alphanum (many (alphanum <|> hyphen)) cons <|> listify alphanum
+let domain<'a> : Parser<char list,'a> = pipe2 domainLabel dot <| fun a b -> a @ [b]
+let hostname<'a> : Parser<char list,'a> = pipe2 (opt domain) (topLabel .>> opt dot) <| fun a b -> match a with Some(sub) -> sub @ b | _ -> b
 
 let host<'a> : Parser<char list,'a> = hostname <|> ipv4Address
 let port<'a> : Parser<char list,'a> = many digit
 
 // Start returning UriParts
-let scheme<'a> : Parser<UriPart,'a> = (fun a b -> Scheme !!(a::b)) <!> asciiLetter <*> many1 (choice [asciiLetter; digit; plus; hyphen; dot])
+let scheme<'a> : Parser<UriPart,'a> = pipe2 asciiLetter (many1 (choice [asciiLetter; digit; plus; hyphen; dot])) <| fun a b -> Scheme !!(a::b)
 let hostport<'a> : Parser<UriPart list,'a> =
-  (fun a b -> match b with Some(v) -> [Host !!a; Port !!v] | _ -> [Host !!a]) <!> host <*> opt (colon >>. port)
+  pipe2 host (opt (colon >>. port)) <| fun a b -> match b with Some(v) -> [Host !!a; Port !!v] | _ -> [Host !!a]
 let server<'a> : Parser<UriPart list,'a> =
-  (fun a b -> match a with Some(info) -> (UserInfo !!info)::b | _ -> b) <!> (opt (userInfo .>> at)) <*> hostport
-let uriAuthority<'a> : Parser<UriPart list,'a> = ((fun a -> Host !!a) <!> regName |> listify) <|> server
+  pipe2 (opt (userInfo .>> at)) hostport <| fun a b -> match a with Some(info) -> (UserInfo !!info)::b | _ -> b
+let uriAuthority<'a> : Parser<UriPart list,'a> = regName |>> (fun a -> [Host !!a]) <|> server
 let netPath<'a> : Parser<UriPart list,'a> =
-  (fun a b -> a @ [Path(match b with Some(path) -> !!path | _ -> "/")]) <!> skipString "//" *> uriAuthority <*> opt uriAbsPath
-
-let opaquePart<'a> : Parser<UriPart list,'a> = (fun u1 u2 -> [Host !!(u1::u2)]) <!> uriCharNoSlash <*> many uriChar
+  pipe2 (skipString "//" >>. uriAuthority) (opt uriAbsPath) <| fun a b -> a @ [Path(match b with Some(path) -> !!path | _ -> "/")]
+let opaquePart<'a> : Parser<UriPart list,'a> = pipe2 uriCharNoSlash (many uriChar) <| fun u1 u2 -> [Host !!(u1::u2)]
 let hierPart<'a> : Parser<UriPart list,'a> =
-  (fun a b c -> a @ [QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)])
-  <!> (netPath <|> ((fun a -> [Path !!a]) <!> uriAbsPath))
-  <*> opt (qmark *> uriQuery)
-  <*> opt (hash *> uriFragment)
+  pipe3 (netPath <|> ((fun a -> [Path !!a]) <!> uriAbsPath)) (opt (qmark *> uriQuery)) (opt (hash *> uriFragment))
+  <| fun a b c -> a @ [QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)]
 
 let absoluteUri<'a> : Parser<UriKind,'a> = (fun a b -> AbsoluteUri(a::b)) <!> scheme .>> colon <*> (hierPart <|> opaquePart)
 let relativeUri<'a> : Parser<UriKind,'a> =
-  (fun a b c -> RelativeUri [Path !!a;QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)])
-  <!> (uriAbsPath <|> relPath)
-  <*> opt (qmark *> uriQuery)
-  <*> opt (hash *> uriFragment)
+  pipe3 (uriAbsPath <|> relPath) (opt (qmark *> uriQuery)) (opt (hash *> uriFragment))
+  <| fun a b c -> RelativeUri [Path !!a;QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)]
 
-let authorityRef<'a> : Parser<UriKind, 'a> = UriAuthority <!> uriAuthority
-let fragmentRef<'a> : Parser<UriKind,'a> = (fun f -> FragmentRef(Fragment !!f)) <!> hash *> uriFragment
+let authorityRef<'a> : Parser<UriKind, 'a> = uriAuthority |>> UriAuthority
+let fragmentRef<'a> : Parser<UriKind,'a> =  hash >>. uriFragment |>> fun f -> FragmentRef(Fragment !!f)
 let uriReference<'a> : Parser<UriKind,'a> = absoluteUri <|> relativeUri <|> fragmentRef
-let anyUri<'a> : Parser<UriKind, 'a> = (fun _ -> AnyUri) <!> pstring "*"
+let anyUri<'a> : Parser<UriKind, 'a> = pstring "*" |>> fun _ -> AnyUri
