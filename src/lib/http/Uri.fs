@@ -61,7 +61,7 @@ let server<'a> : Parser<UriPart list,'a> =
   (fun a b -> match a with Some(info) -> (UserInfo !!info)::b | _ -> b) <!> (opt (userInfo .>> at)) <*> hostport
 let uriAuthority<'a> : Parser<UriPart list,'a> = ((fun a -> Host !!a) <!> regName |> listify) <|> server
 let netPath<'a> : Parser<UriPart list,'a> =
-  (fun a b -> match b with Some(path) -> a @ [Path !!path] | _ -> a) <!> skipString "//" *> uriAuthority <*> opt uriAbsPath
+  (fun a b -> a @ [Path(match b with Some(path) -> !!path | _ -> "/")]) <!> skipString "//" *> uriAuthority <*> opt uriAbsPath
 
 let opaquePart<'a> : Parser<UriPart list,'a> = (fun u1 u2 -> [Host !!(u1::u2)]) <!> uriCharNoSlash <*> many uriChar
 let hierPart<'a> : Parser<UriPart list,'a> =
