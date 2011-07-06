@@ -6,7 +6,7 @@ open System.IO
 
 // properties
 let projectName = "Fracture"
-let version = "0.1.4"
+let version = "0.1.4." + System.DateTime.UtcNow.ToString("yyyyMMdd")
 let projectSummary = "Fracture is an F# based socket implementation for high-speed, high-throughput applications."
 let projectDescription = "Fracture is an F# based socket implementation for high-speed, high-throughput applications. It is built on top of SocketAsyncEventArgs, which minimises the memory fragmentation common in the IAsyncResult pattern."
 let authors = ["Dave Thomas";"Ryan Riley"]
