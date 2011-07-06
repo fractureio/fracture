@@ -8,6 +8,10 @@ module String =
   let ofCharList (input:char list) = String(Array.ofList input)
   let toCharList (input:String) = input.ToCharArray() |> Array.toList
 
+let private wsChars = [|' ';'\t'|]
+type String with
+  member x.TrimWhiteSpace() = x.Trim(wsChars)
+
 let inline (<*>) f a = f >>= fun f' -> a >>= fun a' -> preturn (f' a')
 let inline lift f a = a |>> f
 let inline (<!>) f a = lift f a
