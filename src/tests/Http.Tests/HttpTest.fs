@@ -11,8 +11,39 @@ open Fracture.Http.Http
 open NUnit.Framework
 open FsUnit
 
+type TestHandler() =
+  let mutable onMessageBeginWasCalled = false
+  let mutable startLine = Unchecked.defaultof<HttpRequestLine>
+  let mutable headers : HttpHeader list = []
+  let mutable onHeadersEndWasCalled = false
+  let mutable body = Unchecked.defaultof<HttpMessageBody>
+  let mutable onMessageEndWasCalled = false
+  let mutable error = Unchecked.defaultof<ParserError>
+
+  member this.OnHttpMessageBeginWasCalled = onMessageBeginWasCalled
+  member this.StartLine = startLine
+  member this.Headers = headers
+  member this.OnHeadersEndWasCalled = onHeadersEndWasCalled
+  member this.Body = body
+  member this.OnHttpMessageEndWasCalled = onMessageEndWasCalled
+  member this.Error = error
+
+  interface IHttpMessageParserHandler with
+    member this.OnHttpMessageBegin() = onMessageBeginWasCalled <- true
+    member this.OnStartLine(v) = startLine <- v
+    member this.OnHeader(v) = headers <- v::headers
+    member this.OnHeadersEnd() = onHeadersEndWasCalled <- true
+    member this.OnBody(v) = body <- v
+    member this.OnHttpMessageEnd() = onMessageEndWasCalled <- true
+    member this.OnError(e) = error <- e
+
 let run p input =
   match run p input with
+  | Success(actual,_,_) -> actual
+  | Failure(error,_,_) -> failwith error
+
+let runWithHandler p handler input =
+  match runParserOnString p handler "test" input with
   | Success(actual,_,_) -> actual
   | Failure(error,_,_) -> failwith error
 
@@ -190,7 +221,8 @@ let testHttpRequestLines = [|
 [<Test>]
 [<TestCaseSource("testHttpRequestLines")>]
 let ``test httpRequestLine should parse an HTTP request line, including the newline``(input, expected:HttpRequestLine) =
-  run httpRequestLine input |> should equal expected
+  let handler = TestHandler() :> IHttpMessageParserHandler
+  runWithHandler httpRequestLine handler input |> should equal expected
 
 [<TestCase("", ExpectedException=typeof<Exception>)>]
 [<TestCase("GET", ExpectedException=typeof<Exception>)>]
@@ -204,7 +236,23 @@ let ``test httpRequestLine should parse an HTTP request line, including the newl
 [<TestCase("GET *\r\n", ExpectedException=typeof<Exception>)>]
 [<TestCase("GET HTTP/1.0\r\n", ExpectedException=typeof<Exception>)>]
 [<TestCase("GET HTTP/1.1\r\n", ExpectedException=typeof<Exception>)>]
-let ``test httpRequestLine should not parse invalid HTTP request lines``(input) = run httpRequestLine input
+let ``test httpRequestLine should not parse invalid HTTP request lines``(input) =
+  let handler = TestHandler() :> IHttpMessageParserHandler
+  runWithHandler httpStatusLine handler input |> should equal expected
+
+let testHttpStatusLines = [|
+  [| box "100 Continue\n"; box (HttpStatusLine(100, "Continue")) |]
+  [| box "200 OK\r"; box (HttpStatusLine(200, "OK")) |]
+  [| box "302 Found\r\n"; box (HttpStatusLine(302, "Found")) |]
+  [| box "404 Not Found\r"; box (HttpStatusLine(404, "Not Found")) |]
+  [| box "405 Method Not Allowed\n"; box (HttpStatusLine(405, "Method Not Allowed")) |]
+  [| box "406 Not Acceptable\r\n"; box (HttpStatusLine(406, "Not Acceptable")) |]
+|]
+[<Test>]
+[<TestCaseSource("testHttpStatusLines")>]
+let ``test httpStatusLine should parse an HTTP response status line, including the newline``(input, expected:HttpStatusLine) =
+  let handler = TestHandler() :> IHttpMessageParserHandler
+  runWithHandler httpStatusLine handler input |> should equal expected
 
 // Test HTTP Request Header parser
 let testHttpHeader = [|
@@ -215,7 +263,8 @@ let testHttpHeader = [|
 [<Test>]
 [<TestCaseSource("testHttpHeader")>]
 let ``test httpHeader should parse a valid HTTP header, including the newline``(input, expected:HttpHeader) =
-  run httpHeader input |> should equal expected
+  let handler = TestHandler() :> IHttpMessageParserHandler
+  runWithHandler httpHeader handler input |> should equal expected
 
 let date = System.DateTime.UtcNow.ToLongDateString()
 let testHttpHeaders = [|
@@ -230,7 +279,8 @@ let testHttpHeaders = [|
 [<Test>]
 [<TestCaseSource("testHttpHeaders")>]
 let ``test httpHeaders should parse a set of valid HTTP headers, including the newline``(input, expected:HttpHeader list) =
-  run (many httpHeader) input |> should equal expected
+  let handler = TestHandler() :> IHttpMessageParserHandler
+  runWithHandler (many httpHeader) handler input |> should equal expected
 
 // Test HTTP Request Message parser
 let testHttpRequests = [|
@@ -258,4 +308,5 @@ let testHttpRequests = [|
 [<Test>]
 [<TestCaseSource("testHttpRequests")>]
 let ``test httpRequestMessage should parse valid HTTP requests``(input, expected) =
-  run httpRequestMessage input |> should equal expected
+  let handler = TestHandler() :> IHttpMessageParserHandler
+  runWithHandler httpRequestMessage handler input |> should equal expected

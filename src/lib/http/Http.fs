@@ -2,6 +2,7 @@
 
 open System
 open System.Xml.Linq
+open FParsec
 open FParsec.Primitives
 open FParsec.CharParsers
 open Primitives
@@ -80,7 +81,17 @@ type HttpMessage =
   | HttpRequestMessage of HttpRequestLine * HttpHeader list * HttpMessageBody
   | HttpResponseMessage of HttpStatusLine * HttpHeader list * HttpMessageBody
 
-// TODO: Basic Rules
+type IHttpMessageParserHandler =
+  abstract OnHttpMessageBegin : unit -> unit
+  // TODO: make this more generic to also process responses
+  abstract OnStartLine : HttpRequestLine -> unit
+  abstract OnHeader : HttpHeader -> unit
+  abstract OnHeadersEnd : unit -> unit
+  abstract OnBody : HttpMessageBody -> unit
+  abstract OnHttpMessageEnd : unit -> unit
+  // TODO: Possibly call ToString on ParserError and wrap in an exception?
+  abstract OnError : ParserError -> unit
+
 let text<'a> : Parser<char, 'a> = noneOf controlChars
 let lws<'a> : Parser<char, 'a> = optional skipNewline >>. many1 (space <|> tab) >>% ' '
 let internal separatorChars = "()<>@,;:\\\"/[]?={} \t"
@@ -118,23 +129,49 @@ let httpRequestUri<'a> : Parser<UriKind, 'a> = anyUri <|> absoluteUri <|> relati
 let skipHttpPrefix<'a> : Parser<unit, 'a> = skipString "HTTP/"
 let skipDot<'a> : Parser<unit, 'a> = skipChar '.'
 let httpVersion<'a> : Parser<HttpVersion, 'a> =
-  pipe2 (skipHttpPrefix >>. pint32) (skipDot >>. pint32) (fun major minor -> HttpVersion(major, minor))
+  pipe2 (skipHttpPrefix >>. pint32) (skipDot >>. pint32) <| fun major minor -> HttpVersion(major, minor)
 
 // HTTP Request Line
-let httpRequestLine<'a> : Parser<HttpRequestLine, 'a> = 
-  pipe3 (httpMethod .>> skipSpace) (httpRequestUri .>> skipSpace) (httpVersion .>> skipNewline) (fun x y z -> HttpRequestLine(x,y,z))
+let httpRequestLine : Parser<HttpRequestLine, IHttpMessageParserHandler> = 
+  pipe4 (httpMethod .>> skipSpace) (httpRequestUri .>> skipSpace) (httpVersion .>> skipNewline) getUserState
+  <| fun x y z u ->
+       let startLine = HttpRequestLine(x, y, z)
+       u.OnStartLine(startLine)
+       startLine
+
+// HTTP Status Line
+let httpStatusLine<'a> : Parser<HttpStatusLine, 'a> = 
+  pipe3 (pint32 .>> skipSpace) (many1 text .>> skipNewline) getUserState
+  <| fun x y u -> HttpStatusLine(x, String.ofCharList y)
 
 // HTTP Headers
 let skipColon<'a> : Parser<unit, 'a> = skipChar ':'
 // TODO: This can be improved "by consisting of either *TEXT or combinations of token, separators, and quoted-string"
 let fieldContent<'a> : Parser<char, 'a> = text <|> attempt lws
-let httpHeader<'a> : Parser<HttpHeader, 'a> =
-  pipe2 (token .>> skipColon) (many fieldContent .>> skipNewline) (fun x y -> HttpHeader(x, (String.ofCharList y).TrimWhiteSpace()))
+let httpHeader : Parser<HttpHeader, IHttpMessageParserHandler> =
+  pipe3 (token .>> skipColon) (many fieldContent .>> skipNewline) getUserState
+  <| fun x y u ->
+       let header = HttpHeader(x, (String.ofCharList y).TrimWhiteSpace())
+       u.OnHeader(header)
+       header
 
 // HTTP Message Body
 // TODO: create a real body parser
-let httpMessageBody<'a> : Parser<HttpMessageBody, 'a> = preturn EmptyBody
+let httpMessageBody : Parser<HttpMessageBody, IHttpMessageParserHandler> =
+  pipe2 (preturn EmptyBody) getUserState <| fun x u -> u.OnBody(x); x
+
+/// Skips the \r\n newline marker separating headers from the message body.
+let skipBodySeparator : Parser<unit, IHttpMessageParserHandler> =
+  let error = expected "newline (\\r\\n)"
+  let crcn = TwoChars('\r','\n')
+  fun stream ->
+    if stream.Skip(crcn) then  // if this is too aggressive, we can fall back to the built-in stream.SkipNewline()
+      stream.RegisterNewline()
+      let handler = stream.State.UserState
+      handler.OnHeadersEnd()
+      Reply(())
+    else Reply(Error, error)
 
 // HTTP Request Message
-let httpRequestMessage<'a> : Parser<HttpMessage, 'a> =
-  pipe4 httpRequestLine (many httpHeader) skipNewline httpMessageBody (fun w x _ z -> HttpRequestMessage(w, x, z))
+let httpRequestMessage : Parser<HttpMessage, IHttpMessageParserHandler> =
+  pipe4 httpRequestLine (many httpHeader) skipBodySeparator httpMessageBody (fun w x _ z -> HttpRequestMessage(w, x, z))
