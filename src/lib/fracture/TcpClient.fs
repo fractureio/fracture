@@ -14,7 +14,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
 
     ///Creates a Socket as loopback using specified IPEndPoint.
     let listeningSocket = createSocket(ipEndPoint)
-    let pool = new BocketPool(poolSize, size)
+    let pool = new BocketPool("regularpool", poolSize, size)
     let mutable disposed = false
         
     //ensures the listening socket is shutdown on disposal.

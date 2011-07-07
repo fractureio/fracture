@@ -2,7 +2,7 @@
 open System.Net
 open Fracture
 
-let quoteSize = 512
+let quoteSize = 1024
 let generateCircularSeq (s) = 
     let rec next () = 
         seq { for element in s do
@@ -19,7 +19,8 @@ let testMessage2 = Array.init<byte> 1 (fun _ -> 1uy)
 
 let startclient(port, i) = 
     async{
-    do! Async.Sleep(i*1000)
+    do! Async.Sleep(i*100)
+    Console.WriteLine(sprintf "Client %d" i )
     let client = new TcpClient()
     client.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "**Sent: %A " (fst x).Length) )
 
@@ -28,7 +29,7 @@ let startclient(port, i) =
 
     client.Connected 
     |> Observable.add (fun x -> 
-        do printfn "%A Connected on %A" DateTime.Now.TimeOfDay x
+        do Console.WriteLine(sprintf "%A Connected on %A" DateTime.Now.TimeOfDay x)
         let sendloop = async{   while true do
                                     do! Async.Sleep(1000)
                                     client.Send(testMessage) }
@@ -38,7 +39,7 @@ let startclient(port, i) =
     client.Start(new IPEndPoint(IPAddress.Loopback, port))
     }
 
-Async.Parallel [ for i in 1 .. 100 -> startclient (6667, i) ] 
+Async.Parallel [ for i in 1 .. 1000 -> startclient (6667, i) ] 
     |> Async.Ignore 
     |> Async.Start
 

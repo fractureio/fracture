@@ -4,7 +4,7 @@ open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
 
-type internal BocketPool(number, size) =
+type internal BocketPool(name, number, size) =
     let totalsize = (number * size)
     let buffer = Array.zeroCreate<byte> totalsize
     let pool = new BlockingCollection<SocketAsyncEventArgs>(number:int)
@@ -27,13 +27,19 @@ type internal BocketPool(number, size) =
                 loop (n + 1)
         loop 0                    
     member this.CheckOut() =
-        pool.Take()
+        //let sw = System.Diagnostics.Stopwatch.StartNew()
+        let saea = pool.Take()
+        //sw.Stop()
+        //Console.WriteLine(sprintf "Pool Checkout time: %d" sw.ElapsedMilliseconds )
+        Console.WriteLine(sprintf "Checkout on %s no: %d" name pool.Count )
+        saea
     member this.CheckIn(saea) =
         // ensure the the full range of the buffer is available this may have changed
         // if the bocket was previously used for a send or connect operation
         if saea.Count < size then 
             saea.SetBuffer(saea.Offset, size)
         pool.Add(saea)
+        Console.WriteLine(sprintf "Check In on %s no: %d" name pool.Count )
     member this.Count =
         pool.Count
     interface IDisposable with

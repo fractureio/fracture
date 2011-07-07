@@ -9,7 +9,8 @@ open System.Net.Sockets
 /// even if an error occurs or the Async method completes synchronously.
 let invokeAsyncMethod( asyncmethod, callback, args:SocketAsyncEventArgs) =
     let result = asyncmethod args
-    if result <> true then callback args
+    if result <> true then 
+        callback args
 
 type Socket with 
     member s.AcceptAsyncSafe(callback, args) =  invokeAsyncMethod(s.AcceptAsync, callback, args) 

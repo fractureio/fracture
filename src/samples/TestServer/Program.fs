@@ -6,7 +6,7 @@ System.AppDomain.CurrentDomain.UnhandledException |> Observable.add (fun x ->
     Console.WriteLine( (sprintf "%A" (x.ExceptionObject :?> Exception))))
 try
 
-    use server = new TcpListener(new IPEndPoint(IPAddress.Loopback, 6667), 50, 512, 200)
+    use server = new TcpListener(new IPEndPoint(IPAddress.Loopback, 6667), 1000, 4096, 100)
 
     server.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "**Sent: %A " (fst x).Length ))
 
@@ -16,7 +16,7 @@ try
 
     server.Disconnected |> Observable.add (fun x -> Console.WriteLine(sprintf "%A Endpoint %A: Disconnected" DateTime.Now.TimeOfDay x))
 
-    server.Start ()
+    server.Start()
     "Server Running, press a key to exit." |> printfn "%s"
     Console.ReadKey() |> ignore
 with
