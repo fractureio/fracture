@@ -109,7 +109,7 @@ let internal mapHttpMethod = function
   | "CONNECT" -> CONNECT
   | x -> ExtensionMethod x
 let httpMethod<'a> : Parser<HttpRequestMethod, 'a> =
-  mapHttpMethod <!> (poptions <|> pget <|> phead <|> ppost <|> pput <|> pdelete <|> ptrace <|> pconnect <|> token)
+  poptions <|> pget <|> phead <|> ppost <|> pput <|> pdelete <|> ptrace <|> pconnect <|> token |>> mapHttpMethod
 
 // HTTP Request URI
 let httpRequestUri<'a> : Parser<UriKind, 'a> = anyUri <|> absoluteUri <|> relativeUri <|> authorityRef

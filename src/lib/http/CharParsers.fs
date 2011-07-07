@@ -21,4 +21,4 @@ let semicolon<'a> : Parser<char, 'a> = pchar ';'
 let slash<'a> : Parser<char, 'a> = pchar '/'
 let qmark<'a> : Parser<char, 'a> = pchar '?'
 let at<'a> : Parser<char, 'a> = pchar '@'
-let escaped<'a> : Parser<char, 'a> = readHex <!> skipChar '%' *> hex <*> hex
+let escaped<'a> : Parser<char, 'a> = pipe2 (percent >>. hex) hex readHex

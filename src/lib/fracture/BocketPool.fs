@@ -27,10 +27,14 @@ type internal BocketPool(name, number, size) =
                 loop (n + 1)
         loop 0                    
     member this.CheckOut() =
-        //let sw = System.Diagnostics.Stopwatch.StartNew()
+#if DEBUG
+        let sw = System.Diagnostics.Stopwatch.StartNew()
+#endif
         let saea = pool.Take()
-        //sw.Stop()
-        //Console.WriteLine(sprintf "Pool Checkout time: %d" sw.ElapsedMilliseconds )
+#if DEBUG
+        sw.Stop()
+        Console.WriteLine(sprintf "Pool Checkout time: %d" sw.ElapsedMilliseconds )
+#endif
         Console.WriteLine(sprintf "Checkout on %s no: %d" name pool.Count )
         saea
     member this.CheckIn(saea) =

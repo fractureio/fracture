@@ -10,10 +10,10 @@ open System.Reflection
 open Common
 
 ///Creates a new TcpListener using the specified parameters
-type TcpListener(ipendpoint, poolSize, size, backlog) =
+type TcpListener(ipEndPoint, poolSize, size, backlog) =
 
-    ///Creates a Socket as loopback using specified ipendpoint.
-    let listeningSocket = createSocket(ipendpoint)
+    ///Creates a Socket as loopback using specified ipEndPoint.
+    let listeningSocket = createSocket(ipEndPoint)
     let pool = new BocketPool("regular pool", poolSize, size)
     let connectionPool = new BocketPool("connection pool", 100, 288)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
@@ -60,7 +60,7 @@ type TcpListener(ipendpoint, poolSize, size, backlog) =
 
             //check if data was given on connection
             if args.BytesTransferred > 0 then
-                let data = aquiredata args
+                let data = acquireData args
                 //trigger received
                 (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
 
@@ -84,7 +84,7 @@ type TcpListener(ipendpoint, poolSize, size, backlog) =
         let sock = args.UserToken :?> Socket
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
             //process received data, check if data was given on connection.
-            let data = aquiredata args
+            let data = acquireData args
             //trigger received
             (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
             //get on with the next receive
@@ -100,7 +100,7 @@ type TcpListener(ipendpoint, poolSize, size, backlog) =
         let sock = args.UserToken :?> Socket
         match args.SocketError with
         | SocketError.Success ->
-            let sentData = aquiredata args
+            let sentData = acquireData args
             //notify data sent
             (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
         | SocketError.NoBufferSpaceAvailable

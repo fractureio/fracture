@@ -82,19 +82,19 @@ let inline (-+>) (a:Pipelet<_,_>) b = a.Detach(b);b
 
 /// Picks a circular sequence of routes that repeats i.e. A,B,C,A,B,C etc
 let roundRobin<'a> =
-    let makeseqskipper =
+    let makeSeqSkipper =
         let tmnt = ref 0
         let tick(seq) =
             tmnt := (!tmnt + 1) % (Seq.length seq)
             Seq.take 1 <| Seq.skip !tmnt seq 
         tick
 
-    let createroundrobin messages (routes) =
+    let createRoundRobin messages (routes) =
         if routes |> Seq.isEmpty then ()
         else 
-            let route =  makeseqskipper routes
+            let route =  makeSeqSkipper routes
             messages |> Seq.iter (fun msg -> do route |> Seq.iter (fun (s:'a IPipeletInput) -> s.Post msg) )
-    createroundrobin
+    createRoundRobin
 
 /// Simply picks the first route
 let basicRouter messages (routes:'a IPipeletInput seq) =

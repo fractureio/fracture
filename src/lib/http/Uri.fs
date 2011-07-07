@@ -33,9 +33,9 @@ let regName<'a> : Parser<char list,'a> = unreserved <|> escaped <|> anyOf "$,;:@
 let userInfo<'a> : Parser<char list,'a> = unreserved <|> escaped <|> anyOf ";:&=+$," |> many
 
 let param<'a> : Parser<char list,'a> = many paramChar
-let segment<'a> : Parser<char list,'a> = flatten <!> param <*> many (cons <!> semicolon <*> param)
-let pathSegments<'a> : Parser<char list,'a> = flatten <!> segment <*> many (cons <!> slash <*> segment)
-let uriAbsPath<'a> : Parser<char list,'a> = cons <!> slash <*> pathSegments
+let segment<'a> : Parser<char list,'a> = pipe2 param (many (pipe2 semicolon param cons)) flatten
+let pathSegments<'a> : Parser<char list,'a> = pipe2 segment (many (pipe2 slash segment cons)) flatten
+let uriAbsPath<'a> : Parser<char list,'a> = pipe2 slash pathSegments cons
 
 let relPath<'a> : Parser<char list,'a> =
   pipe2 relSegment (opt uriAbsPath) <| fun hd tl -> match tl with | Some(t) -> hd @ t | _ -> hd
@@ -65,12 +65,12 @@ let netPath<'a> : Parser<UriPart list,'a> =
   pipe2 (skipString "//" >>. uriAuthority) (opt uriAbsPath) <| fun a b -> a @ [Path(match b with Some(path) -> !!path | _ -> "/")]
 let opaquePart<'a> : Parser<UriPart list,'a> = pipe2 uriCharNoSlash (many uriChar) <| fun u1 u2 -> [Host !!(u1::u2)]
 let hierPart<'a> : Parser<UriPart list,'a> =
-  pipe3 (netPath <|> ((fun a -> [Path !!a]) <!> uriAbsPath)) (opt (qmark *> uriQuery)) (opt (hash *> uriFragment))
+  pipe3 (netPath <|> (uriAbsPath |>> (fun a -> [Path !!a]))) (opt (qmark >>. uriQuery)) (opt (hash >>. uriFragment))
   <| fun a b c -> a @ [QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)]
 
-let absoluteUri<'a> : Parser<UriKind,'a> = (fun a b -> AbsoluteUri(a::b)) <!> scheme .>> colon <*> (hierPart <|> opaquePart)
+let absoluteUri<'a> : Parser<UriKind,'a> = pipe2 (scheme .>> colon) (hierPart <|> opaquePart) <| fun a b -> AbsoluteUri(a::b)
 let relativeUri<'a> : Parser<UriKind,'a> =
-  pipe3 (uriAbsPath <|> relPath) (opt (qmark *> uriQuery)) (opt (hash *> uriFragment))
+  pipe3 (uriAbsPath <|> relPath) (opt (qmark >>. uriQuery)) (opt (hash >>. uriFragment))
   <| fun a b c -> RelativeUri [Path !!a;QueryString(match b with Some(q) -> !!q | _ -> null);Fragment(match c with Some(f) -> !!f | _ -> null)]
 
 let authorityRef<'a> : Parser<UriKind, 'a> = uriAuthority |>> UriAuthority

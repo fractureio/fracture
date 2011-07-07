@@ -53,7 +53,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
             //NOTE: On the client this is not received data but the data sent during connect...
             //check if data was given on connection
             //if args.BytesTransferred > 0 then
-            //    let data = aquiredata args
+            //    let data = acquireData args
             //    //trigger received
             //    (data, listeningSocket.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
                 
@@ -65,7 +65,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     and processReceive (args:SocketAsyncEventArgs) =
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
             //process received data, check if data was given on connection.
-            let data = aquiredata args
+            let data = acquireData args
             //trigger received
             (data, listeningSocket.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
             //get on with the next receive
@@ -80,7 +80,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         let sock = args.UserToken :?> Socket
         match args.SocketError with
         | SocketError.Success ->
-            let sentData = aquiredata args
+            let sentData = acquireData args
             //notify data sent
             (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
         | SocketError.NoBufferSpaceAvailable
