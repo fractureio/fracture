@@ -33,7 +33,6 @@
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <None Include="packages.config" />
-    <Compile Include="AsyncOperatorsTest.fs" />
     <Compile Include="PipeletsTest.fs" />
   </ItemGroup>
   <ItemGroup>

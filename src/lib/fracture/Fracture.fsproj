@@ -34,7 +34,7 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Compile Include="AsyncOperators.fs" />
+    <None Include="packages.config" />
     <Compile Include="Pipelets.fs" />
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="BocketPool.fs" />
@@ -43,6 +43,10 @@
     <Compile Include="TcpListener.fs" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FSharp.Monad">
+      <HintPath>..\..\..\packages\FSharp.Monad.1.1.3.20110707\lib\FSharp.Monad.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
