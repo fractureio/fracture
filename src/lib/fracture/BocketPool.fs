@@ -17,6 +17,15 @@ type internal BocketPool(name, number, size) =
                 pool.Take()
                     .Dispose()
 
+    let time x = 
+        let sw = new System.Diagnostics.Stopwatch()
+        sw.Start()
+        let res =x()
+        sw.Stop()
+        if sw.ElapsedTicks > 50000L || pool.Count < 10  then
+            Console.WriteLine(sprintf "Slow Bocket %s get: %fms, count: %d" name sw.Elapsed.TotalMilliseconds pool.Count)
+        res 
+
     member this.Start(callback) =
         let rec loop n =
             if n < number then
@@ -27,23 +36,15 @@ type internal BocketPool(name, number, size) =
                 loop (n + 1)
         loop 0                    
     member this.CheckOut() =
-#if DEBUG
-        let sw = System.Diagnostics.Stopwatch.StartNew()
-#endif
-        let saea = pool.Take()
-#if DEBUG
-        sw.Stop()
-        Console.WriteLine(sprintf "Pool Checkout time: %d" sw.ElapsedMilliseconds )
-#endif
-        Console.WriteLine(sprintf "Checkout on %s no: %d" name pool.Count )
-        saea
+        time pool.Take
+
     member this.CheckIn(saea) =
         // ensure the the full range of the buffer is available this may have changed
         // if the bocket was previously used for a send or connect operation
         if saea.Count < size then 
             saea.SetBuffer(saea.Offset, size)
         pool.Add(saea)
-        Console.WriteLine(sprintf "Check In on %s no: %d" name pool.Count )
+
     member this.Count =
         pool.Count
     interface IDisposable with

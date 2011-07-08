@@ -19,12 +19,12 @@ let testMessage2 = Array.init<byte> 1 (fun _ -> 1uy)
 
 let startclient(port, i) = 
     async{
-    do! Async.Sleep(i*100)
+    do! Async.Sleep(i*50)
     Console.WriteLine(sprintf "Client %d" i )
     let client = new TcpClient()
-    client.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "**Sent: %A " (fst x).Length) )
+    client.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "Sent: %A bytes" (fst x).Length) )
 
-    client.Received |> Observable.add (fun x -> let res = sprintf "%A EndPoint: %A bytes received: %i" DateTime.Now.TimeOfDay (snd x) (fst x).Length 
+    client.Received |> Observable.add (fun x -> let res = sprintf "%A %A received: %i bytes" DateTime.Now.TimeOfDay (snd x) (fst x).Length 
                                                 Console.WriteLine(res ))
 
     client.Connected 
@@ -39,7 +39,7 @@ let startclient(port, i) =
     client.Start(new IPEndPoint(IPAddress.Loopback, port))
     }
 
-Async.Parallel [ for i in 1 .. 1000 -> startclient (6667, i) ] 
+Async.Parallel [ for i in 1 .. 5000 -> startclient (6667, i) ] 
     |> Async.Ignore 
     |> Async.Start
 

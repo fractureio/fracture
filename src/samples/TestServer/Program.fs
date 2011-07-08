@@ -6,11 +6,11 @@ System.AppDomain.CurrentDomain.UnhandledException |> Observable.add (fun x ->
     Console.WriteLine( (sprintf "%A" (x.ExceptionObject :?> Exception))))
 try
 
-    use server = new TcpListener(new IPEndPoint(IPAddress.Loopback, 6667), 1000, 4096, 100)
+    use server = new TcpListener(new IPEndPoint(IPAddress.Loopback, 6667), 6000, 4096, 1000)
 
     server.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "**Sent: %A " (fst x).Length ))
 
-    server.Received |> Observable.add (fun x -> do Console.WriteLine(sprintf "%A EndPoint: %A bytes received: %i" DateTime.Now.TimeOfDay (snd x) (fst x).Length ))
+    //server.Received |> Observable.add (fun x -> do Console.WriteLine(sprintf "%A EndPoint: %A bytes received: %i" DateTime.Now.TimeOfDay (snd x) (fst x).Length ))
     
     server.Connected |> Observable.add (fun x -> Console.WriteLine(sprintf "%A Endpoint: %A: Connected" DateTime.Now.TimeOfDay x))
 
