@@ -38,6 +38,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
             | SocketAsyncOperation.Connect -> processConnect(args)
             | SocketAsyncOperation.Receive -> processReceive(args)
             | SocketAsyncOperation.Send -> processSend(args)
+            //TODO: add disconnect
             | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
         finally
             args.UserToken <- null
@@ -115,8 +116,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         listeningSocket.ConnectAsyncSafe(completed, saea)
 
     ///Used to close the current listening socket.
-    member this.Close() =
-        cleanUp()
+    member this.Close() = cleanUp()
         
     interface IDisposable with
         member this.Dispose() = cleanUp()

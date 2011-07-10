@@ -2,7 +2,7 @@
 open System.Net
 open Fracture
 
-let quoteSize = 1024
+let quoteSize = 4096
 let generateCircularSeq (s) = 
     let rec next () = 
         seq { for element in s do
@@ -14,8 +14,6 @@ let testMessage = seq{0uy..255uy}
                   |> generateCircularSeq 
                   |> Seq.take quoteSize 
                   |> Seq.toArray
-
-let testMessage2 = Array.init<byte> 1 (fun _ -> 1uy)
 
 let startclient(port, i) = 
     async{
@@ -39,7 +37,7 @@ let startclient(port, i) =
     client.Start(new IPEndPoint(IPAddress.Loopback, port))
     }
 
-Async.Parallel [ for i in 1 .. 5000 -> startclient (6667, i) ] 
+Async.Parallel [ for i in 1 .. 1000 -> startclient (6667, i) ] 
     |> Async.Ignore 
     |> Async.Start
 

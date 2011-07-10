@@ -39,8 +39,9 @@
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="BocketPool.fs" />
     <Compile Include="Common.fs" />
+    <Compile Include="Threading.fs" />
     <Compile Include="TcpClient.fs" />
-    <Compile Include="TcpListener.fs" />
+    <Compile Include="TcpServer.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.Monad">
