@@ -167,12 +167,13 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
         else failwith "could not find client %"
         
     ///Starts the accepting a incoming connections.
-    member s.listen(address, port) =
+    member s.listen(port, ?address) =
+        let adr = defaultArg address "127.0.0.1"
         //initialise the pools
         connectionPool.Start(completed)
         pool.Start(completed)
         ///Creates a Socket and starts listening on specifiew address and port.
-        listeningSocket <- createSocket(IPEndPoint( IPAddress.Parse(address), port))
+        listeningSocket <- createSocket(IPEndPoint( IPAddress.Parse(adr), port))
         listeningSocket.Listen(backlog)
         listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
 
@@ -185,3 +186,10 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
         
     interface IDisposable with 
         member s.Dispose() = cleanUp(listeningSocket)
+
+    //static member createServer( ?receive, ?connected, ?disconnected, ?sent)=
+    //    new TcpServer(5000, 4096, 100, receive, connected, disconnected, sent)
+
+    static member createServer( ?received, ?connected, ?disconnected, ?sent)=
+        new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+
