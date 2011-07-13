@@ -5,18 +5,12 @@ open System.Net
 open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
-open System.Threading
 open SocketExtensions
-open System.Reflection
 open Common
 open Threading
 
 ///Creates a new TcpServer using the specified parameters
-#if callbacks
 type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?sent) =
-#else
-type TcpServer(ipEndPoint, poolSize, size, backlog) =
-#endif
 
     let pool = new BocketPool("regular pool", poolSize, size)
     let connectionPool = new BocketPool("connection pool", backlog, 288)(*288 bytes is the minimum size for a connection*)
@@ -34,21 +28,10 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
             socket.Close()
             (pool :> IDisposable).Dispose()
             (connectionPool :> IDisposable).Dispose()
-    #if callbacks
-    #else
-    let connectedEvent = new Event<_>()
-    let disconnectedEvent = new Event<_>()
-    let sentEvent = new Event<_>()
-    let receivedEvent = new Event<_>()
-    #endif
 
     let disconnect (socket:Socket) =
         !-- connections
-        #if callbacks
         disconnected |> Option.iter (fun x-> x (socket.RemoteEndPoint :?> IPEndPoint))
-        #else
-        socket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
-        #endif
         closeConnection socket
 
     ///This function is called when each clients connects and also on send and receive
@@ -80,18 +63,10 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                #if callbacks
                 received |> Option.iter (fun x -> x (data, acceptSocket.RemoteEndPoint :?> IPEndPoint) )
-                #else
-                (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
-                #endif
 
             //trigger connected
-            #if callbacks
             connected |> Option.iter (fun x-> x(endPoint))
-            #else
-            connectedEvent.Trigger(endPoint)
-            #endif
             !++ connections
             args.AcceptSocket <- null (*remove the AcceptSocket because we're reusing args*)
 
@@ -114,11 +89,7 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            #if callbacks
             received |> Option.iter (fun x-> x (data, sock.RemoteEndPoint :?> IPEndPoint))
-            #else
-            (data, sock.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
-            #endif
             //get on with the next receive
             let saea = pool.CheckOut()
             saea.UserToken <- sock
@@ -133,31 +104,12 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
         | SocketError.Success ->
             let sentData = acquireData args
             //notify data sent
-            #if callbacks
             sent |> Option.iter (fun x-> x (sentData, sock.RemoteEndPoint :?> IPEndPoint))
-            #else
-            (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
-            #endif
         | SocketError.NoBufferSpaceAvailable
         | SocketError.IOPending
         | SocketError.WouldBlock ->
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
-
-    #if callbacks
-    #else
-    [<CLIEvent>]///This event is fired when a client connects.
-    member s.Connected = connectedEvent.Publish
-
-    [<CLIEvent>]///This event is fired when a client disconnects.
-    member s.Disconnected = disconnectedEvent.Publish
-
-    [<CLIEvent>]///This event is fired when a message is sent to a client.
-    member s.Sent = sentEvent.Publish
-
-    [<CLIEvent>]///This event is fired when a message is received from a client.
-    member s.Received = receivedEvent.Publish
-    #endif
 
     ///Sends the specified message to the client.
     member s.Send(client, msg:byte[]) =
@@ -187,9 +139,5 @@ type TcpServer(ipEndPoint, poolSize, size, backlog) =
     interface IDisposable with 
         member s.Dispose() = cleanUp(listeningSocket)
 
-    //static member createServer( ?receive, ?connected, ?disconnected, ?sent)=
-    //    new TcpServer(5000, 4096, 100, receive, connected, disconnected, sent)
-
     static member createServer( ?received, ?connected, ?disconnected, ?sent)=
         new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
-
