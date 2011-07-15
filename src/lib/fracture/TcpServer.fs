@@ -111,6 +111,9 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
+    static member Create(?received, ?connected, ?disconnected, ?sent) =
+        new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+
     ///Sends the specified message to the client.
     member s.Send(client, msg:byte[]) =
         let success, client = clients.TryGetValue(client)
@@ -119,25 +122,21 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         else failwith "could not find client %"
         
     ///Starts the accepting a incoming connections.
-    member s.listen(port, ?address) =
-        let adr = defaultArg address "127.0.0.1"
+    member s.Listen(?address, ?port) =
+        let address = defaultArg address "127.0.0.1"
+        let port = defaultArg port 80
         //initialise the pools
         connectionPool.Start(completed)
         pool.Start(completed)
-        ///Creates a Socket and starts listening on specifiew address and port.
-        listeningSocket <- createSocket(IPEndPoint( IPAddress.Parse(adr), port))
+        ///Creates a Socket and starts listening on the specified address and port.
+        listeningSocket <- createSocket(IPEndPoint(IPAddress.Parse(address), port))
         listeningSocket.Listen(backlog)
         listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
 
     ///Used to close the current listening socket.
-    member s.Close(listeningSocket) = 
-        cleanUp(listeningSocket)
+    member s.Close(listeningSocket) = cleanUp(listeningSocket)
 
-    member s.Connections = 
-        connections
+    member s.Connections = connections
         
     interface IDisposable with 
         member s.Dispose() = cleanUp(listeningSocket)
-
-    static member createServer( ?received, ?connected, ?disconnected, ?sent)=
-        new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
