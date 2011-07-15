@@ -63,7 +63,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                received |> Option.iter (fun x -> x (data, acceptSocket.RemoteEndPoint :?> IPEndPoint) )
+                received |> Option.iter (fun x -> x (data, acceptSocket.RemoteEndPoint :?> IPEndPoint, send acceptSocket completed pool.CheckOut) )
 
             //trigger connected
             connected |> Option.iter (fun x-> x(endPoint))
@@ -89,7 +89,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            received |> Option.iter (fun x-> x (data, sock.RemoteEndPoint :?> IPEndPoint))
+            received |> Option.iter (fun x-> x (data, sock.RemoteEndPoint :?> IPEndPoint, send sock completed pool.CheckOut))
             //get on with the next receive
             let saea = pool.CheckOut()
             saea.UserToken <- sock
@@ -115,7 +115,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
     member s.Send(client, msg:byte[]) =
         let success, client = clients.TryGetValue(client)
         if success then 
-            send(client, pool.CheckOut, completed, size, msg)
+            send client  completed  pool.CheckOut  msg  size
         else failwith "could not find client %"
         
     ///Starts the accepting a incoming connections.

@@ -14,7 +14,7 @@ let closeConnection (sock:Socket) =
     try sock.Shutdown(SocketShutdown.Both)
     finally sock.Close()
 
-let send(client:Socket, getSaea:unit -> SocketAsyncEventArgs, completed, maxSize, msg:byte[])= 
+let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs)  (msg:byte[]) maxSize= 
     let rec loop offset =
         if offset < msg.Length then
             let amountToSend =
