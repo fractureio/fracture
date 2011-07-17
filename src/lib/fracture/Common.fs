@@ -30,9 +30,11 @@ let send (client:SocketDescriptor) completed (getSaea:unit -> SocketAsyncEventAr
                 saea.SetBuffer(saea.Offset, amountToSend)
                 client.Socket.SendAsyncSafe(completed, saea)
                 loop (offset + amountToSend)
-            finally Console.WriteLine(sprintf "Not connected to server")
+            with
+            | e ->
+                printfn "%s" e.Message
     loop 0 
-    if close then client.Socket.Close(100) 
+    if close then client.Socket.Close(2) 
     
 let acquireData(args:SocketAsyncEventArgs)= 
     //process received data
