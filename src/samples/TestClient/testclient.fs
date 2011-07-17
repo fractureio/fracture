@@ -33,13 +33,13 @@ let startClient(port, i) = async {
         let sendloop = async {
             while true do
                 do! Async.Sleep(1000)
-                client.Send(testMessage) }
+                client.Send(testMessage, false) }
         Async.Start sendloop)
 
     client.Disconnected |> Observable.add (fun x -> Console.WriteLine(sprintf "%A Endpoint %A: Disconnected" DateTime.Now.TimeOfDay x))
     client.Start(new IPEndPoint(IPAddress.Loopback, port)) }
 
-Async.Parallel [ for i in 1 .. 1250 -> startClient (6667, i) ] 
+Async.Parallel [ for i in 1 .. 1000 -> startClient (6667, i) ] 
     |> Async.Ignore 
     |> Async.Start
 

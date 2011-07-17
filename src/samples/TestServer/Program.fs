@@ -12,7 +12,14 @@ try
     TcpServer.Create(
         disconnected = (fun ep -> Console.WriteLine(sprintf "%A %A: Disconnected" DateTime.Now.TimeOfDay ep)), 
         sent = (fun (received,ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.Now.TimeOfDay received.Length )),
-        received = (fun (a,b,c) -> (c a a.Length))
+        received = (fun (a,b,c) -> 
+            (Console.WriteLine(System.Text.Encoding.ASCII.GetString(a))
+             let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToString())
+                            
+             let body = "Hello world.\r\nHello."
+
+             let encoded = System.Text.Encoding.ASCII.GetBytes(header + body)
+             c encoded encoded.Length true))
         (*connected = fun(ep) -> ()*)
     ).Listen(port = 6667)
 

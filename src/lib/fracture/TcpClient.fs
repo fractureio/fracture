@@ -30,6 +30,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let disconnectedEvent = new Event<_>()
     let sentEvent = new Event<_>()
     let receivedEvent = new Event<_>()
+    let mutable serverEndPoint = Unchecked.defaultof<IPEndPoint>
         
     ///This function is called on each async operation.
     let rec completed (args:SocketAsyncEventArgs) =
@@ -46,9 +47,9 @@ type TcpClient(ipEndPoint, poolSize, size) =
 
     and processConnect (args:SocketAsyncEventArgs) =
         if args.SocketError = SocketError.Success then
-
+            serverEndPoint <- listeningSocket.RemoteEndPoint :?> IPEndPoint
             //trigger connected
-            connectedEvent.Trigger(listeningSocket.RemoteEndPoint)
+            connectedEvent.Trigger(serverEndPoint)
             //args.AcceptSocket <- null (*AcceptSocket is null on a connect, its only set by Accept*)
 
             //NOTE: On the client this is not received data but the data sent during connect...
@@ -68,13 +69,13 @@ type TcpClient(ipEndPoint, poolSize, size) =
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            (data, listeningSocket.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
+            (data, serverEndPoint) |> receivedEvent.Trigger
             //get on with the next receive
             let saea = pool.CheckOut()
             listeningSocket.ReceiveAsyncSafe (completed,  saea)
         else
             //Something went wrong or the server stopped sending bytes.
-            listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger 
+            serverEndPoint |> disconnectedEvent.Trigger 
             closeConnection listeningSocket
 
     and processSend (args:SocketAsyncEventArgs) =
@@ -83,7 +84,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         | SocketError.Success ->
             let sentData = acquireData args
             //notify data sent
-            (sentData, sock.RemoteEndPoint :?> IPEndPoint) |> sentEvent.Trigger
+            (sentData, serverEndPoint) |> sentEvent.Trigger
         | SocketError.NoBufferSpaceAvailable
         | SocketError.IOPending
         | SocketError.WouldBlock ->
@@ -100,10 +101,10 @@ type TcpClient(ipEndPoint, poolSize, size) =
     [<CLIEvent>]member this.Received = receivedEvent.Publish
 
     ///Sends the specified message to the client.
-    member this.Send(msg:byte[]) =
-        if listeningSocket.Connected then
-           send listeningSocket  completed  pool.CheckOut  msg  size
-        else listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger
+    member this.Send(msg:byte[], (close:bool)) =
+        try
+           send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint}  completed  pool.CheckOut  msg  size close
+        finally serverEndPoint |> disconnectedEvent.Trigger
         
     ///Starts connecting with remote server
     member this.Start(ipEndPoint) = 
