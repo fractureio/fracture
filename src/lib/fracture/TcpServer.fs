@@ -18,9 +18,9 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
     let pool = new BocketPool("regular pool", poolSize, size)
     let connectionPool = new BocketPool("connection pool", backlog, 1024)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
-    let mutable disposed = false
     let connections = ref 0
-    let mutable listeningSocket:Socket = null
+    let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
+    let mutable disposed = false
         
     //ensures the listening socket is shutdown on disposal.
     let cleanUp(socket:Socket) = 
@@ -122,13 +122,8 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
     static member Create(received, ?connected, ?disconnected, ?sent) =
         new TcpServer(5000, 1024, 1000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
-    ///Sends the specified message to the client.
-    member s.Send(clientEndPoint, msg:byte[]) =
-        let success, client = clients.TryGetValue(clientEndPoint)
-        if success then 
-            send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut  msg  size
-        else failwith "could not find client %"
-        
+    member s.Connections = connections
+
     ///Starts the accepting a incoming connections.
     member s.Listen(?address, ?port) =
         let address = defaultArg address "127.0.0.1"
@@ -137,14 +132,18 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
         connectionPool.Start(completed)
         pool.Start(completed)
         ///Creates a Socket and starts listening on the specified address and port.
-        listeningSocket <- createSocket(IPEndPoint(IPAddress.Parse(address), port))
+        listeningSocket.Bind(IPEndPoint(IPAddress.Parse(address), port))
         listeningSocket.Listen(backlog)
         listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
+        { new IDisposable with
+            member this.Dispose() = cleanUp listeningSocket }
 
-    ///Used to close the current listening socket.
-    member s.Close(listeningSocket) = cleanUp(listeningSocket)
-
-    member s.Connections = connections
+    ///Sends the specified message to the client.
+    member s.Send(clientEndPoint, msg:byte[]) =
+        let success, client = clients.TryGetValue(clientEndPoint)
+        if success then 
+            send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut  msg  size
+        else failwith "could not find client %"
         
     interface IDisposable with 
-        member s.Dispose() = cleanUp(listeningSocket)
+        member s.Dispose() = cleanUp listeningSocket
