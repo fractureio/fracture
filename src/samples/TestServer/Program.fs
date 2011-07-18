@@ -14,7 +14,7 @@ try
         sent = (fun (received,ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.Now.TimeOfDay received.Length )),
         received = (fun (a,b,c) -> 
             (Console.WriteLine(System.Text.Encoding.ASCII.GetString(a))
-             let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToString())
+             let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fract\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToString())
                             
              let body = "Hello world.\r\nHello."
 

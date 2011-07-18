@@ -13,7 +13,7 @@ open Threading
 type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?sent) =
 
     let pool = new BocketPool("regular pool", poolSize, size)
-    let connectionPool = new BocketPool("connection pool", backlog, 288)(*288 bytes is the minimum size for a connection*)
+    let connectionPool = new BocketPool("connection pool", backlog, 1024)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let mutable disposed = false
     let connections = ref 0
@@ -29,10 +29,10 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             (pool :> IDisposable).Dispose()
             (connectionPool :> IDisposable).Dispose()
 
-    let disconnect (socket:Socket) =
+    let disconnect (sd:SocketDescriptor) =
         !-- connections
-        disconnected |> Option.iter (fun x-> x (socket.RemoteEndPoint :?> IPEndPoint))
-        closeConnection socket
+        disconnected |> Option.iter (fun x-> x (sd.RemoteEndPoint ))
+        sd.Socket.Close()
 
     ///This function is called when each clients connects and also on send and receive
     let rec completed (args:SocketAsyncEventArgs) =
@@ -83,7 +83,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
 
     and processDisconnect (args:SocketAsyncEventArgs) =
         let sd = args.UserToken :?> SocketDescriptor
-        sd.Socket |> disconnect
+        sd |> disconnect
 
     and processReceive (args:SocketAsyncEventArgs) =
         let sd = args.UserToken :?> SocketDescriptor
@@ -101,7 +101,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             else ()//? what do we do here?
         else
             //Something went wrong or the client stopped sending bytes.
-            disconnect(socket)
+            disconnect(sd)
 
     and processSend (args:SocketAsyncEventArgs) =
         let sd = args.UserToken :?> SocketDescriptor
@@ -117,7 +117,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
     static member Create(?received, ?connected, ?disconnected, ?sent) =
-        new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+        new TcpServer(5000, 1024, 1000, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
     ///Sends the specified message to the client.
     member s.Send(clientEndPoint, msg:byte[]) =
