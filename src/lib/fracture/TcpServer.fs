@@ -10,7 +10,10 @@ open Common
 open Threading
 
 ///Creates a new TcpServer using the specified parameters
-type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?sent) =
+type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?sent) =
+    let connected = defaultArg connected (fun ep -> Console.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
+    let disconnected = defaultArg disconnected (fun ep -> Console.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
+    let sent = defaultArg sent (fun (received:byte[], ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
 
     let pool = new BocketPool("regular pool", poolSize, size)
     let connectionPool = new BocketPool("connection pool", backlog, 1024)(*288 bytes is the minimum size for a connection*)
@@ -31,7 +34,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
 
     let disconnect (sd:SocketDescriptor) =
         !-- connections
-        disconnected |> Option.iter (fun x-> x (sd.RemoteEndPoint ))
+        disconnected sd.RemoteEndPoint
         sd.Socket.Close()
 
     ///This function is called when each clients connects and also on send and receive
@@ -60,7 +63,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             if not success then failwith "client could not be added"
 
             //trigger connected
-            connected |> Option.iter (fun x-> x(endPoint))
+            connected endPoint
             !++ connections
             args.AcceptSocket <- null (*remove the AcceptSocket because we're reusing args*)
 
@@ -77,7 +80,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                received |> Option.iter (fun x -> x (data, endPoint, send {Socket = acceptSocket; RemoteEndPoint = endPoint} completed pool.CheckOut) )
+                received (data, endPoint, send {Socket = acceptSocket; RemoteEndPoint = endPoint} completed pool.CheckOut)
 
         else Console.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
 
@@ -92,7 +95,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            received |> Option.iter (fun x-> x (data, sd.RemoteEndPoint, send sd completed pool.CheckOut))
+            received (data, sd.RemoteEndPoint, send sd completed pool.CheckOut)
             //get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()
@@ -101,7 +104,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             else ()//? what do we do here?
         else
             //Something went wrong or the client stopped sending bytes.
-            disconnect(sd)
+            disconnect sd
 
     and processSend (args:SocketAsyncEventArgs) =
         let sd = args.UserToken :?> SocketDescriptor
@@ -109,15 +112,15 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         | SocketError.Success ->
             let sentData = acquireData args
             //notify data sent
-            sent |> Option.iter (fun x-> x (sentData, sd.RemoteEndPoint))
+            sent (sentData, sd.RemoteEndPoint)
         | SocketError.NoBufferSpaceAvailable
         | SocketError.IOPending
         | SocketError.WouldBlock ->
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
-    static member Create(?received, ?connected, ?disconnected, ?sent) =
-        new TcpServer(5000, 1024, 1000, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+    static member Create(received, ?connected, ?disconnected, ?sent) =
+        new TcpServer(5000, 1024, 1000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
     ///Sends the specified message to the client.
     member s.Send(clientEndPoint, msg:byte[]) =
