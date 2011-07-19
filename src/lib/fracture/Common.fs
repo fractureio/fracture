@@ -30,13 +30,12 @@ let disposeSocket (socket:Socket) =
         :? System.Net.Sockets.SocketException -> ()
     socket.Dispose()
 
-let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs)  (msg:byte[]) maxSize= 
+/// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
+let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs) bufferLength (msg:byte[]) = 
     let rec loop offset =
         if offset < msg.Length then
-            let amountToSend =
-                let remaining = msg.Length - offset in
-                if remaining > maxSize then maxSize else remaining
             let saea = getSaea()
+            let amountToSend = min (msg.Length - offset) bufferLength
             saea.UserToken <- client
             Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, amountToSend)
             saea.SetBuffer(saea.Offset, amountToSend)
