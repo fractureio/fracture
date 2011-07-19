@@ -23,9 +23,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
     let cleanUp(socket:Socket) = 
         if not disposed && socket <> null then
             disposed <- true
-            socket.Shutdown(SocketShutdown.Both)
-            socket.Disconnect(false)
-            socket.Close()
+            disposeSocket socket
             (pool :> IDisposable).Dispose()
             (connectionPool :> IDisposable).Dispose()
 

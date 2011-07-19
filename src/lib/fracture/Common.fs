@@ -17,6 +17,19 @@ let closeConnection (sock:Socket) =
     try sock.Shutdown(SocketShutdown.Both)
     finally sock.Close()
 
+let disposeSocket (socket:Socket) =
+    try
+        socket.Shutdown(SocketShutdown.Both)
+        socket.Disconnect(false)
+        socket.Close()
+    with
+        // note: the calls above can sometimes result in
+        // SocketException: A request to send or receive data was disallowed because the socket
+        // is not connected and (when sending on a datagram socket using a sendto call) no 
+        // address was supplied
+        :? System.Net.Sockets.SocketException -> ()
+    socket.Dispose()
+
 let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs)  (msg:byte[]) maxSize= 
     let rec loop offset =
         if offset < msg.Length then
