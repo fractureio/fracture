@@ -34,6 +34,7 @@ let makeEchoClient endPoint poolSize size =
 [<TestCase(4,1,2)>]
 let ``server starts and stop cleanly even if no one connects``(poolSize:int, perSocketBuffer:int, backlog:int) = 
     use server = makeEchoServer(poolSize, perSocketBuffer, backlog)
+    shouldNotBeListening()
     ()
 
 [<TestCase(1,1)>]
@@ -41,3 +42,12 @@ let ``client starts and stops cleanly even if it does not connect``(poolSize:int
     use client = makeEchoClient testEndPoint poolSize size
     ()
 
+[<Test>]
+let ``server listens when started and stops listening when stopped``() =
+    let startAndStop() =
+        shouldNotBeListening()
+        use server = makeTestEchoServer()
+        server.Listen(testEndPoint.Address.ToString(), testEndPoint.Port)
+        shouldBeListening()
+    startAndStop()
+    shouldNotBeListening()
