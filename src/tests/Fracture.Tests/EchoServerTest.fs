@@ -26,6 +26,8 @@ let makeEchoServer(poolSize:int, perSocketBuffer:int, backlog:int) =
 
 let makeTestEchoServer() = makeEchoServer(4,1,2)
 
+let listen (server:TcpServer) = server.Listen(testEndPoint.Address.ToString(), testEndPoint.Port)
+
 let makeEchoClient endPoint poolSize size =
     let client = new TcpClient(endPoint, poolSize, size)
     client
@@ -47,7 +49,16 @@ let ``server listens when started and stops listening when stopped``() =
     let startAndStop() =
         shouldNotBeListening()
         use server = makeTestEchoServer()
-        server.Listen(testEndPoint.Address.ToString(), testEndPoint.Port)
+        server |> listen
         shouldBeListening()
     startAndStop()
     shouldNotBeListening()
+
+[<Test>]
+let ``server cannot be started twice``() =
+    shouldNotBeListening()
+    use server = makeTestEchoServer()
+    server |> listen
+    shouldBeListening()
+    (fun () -> server |> listen) |> should throw typeof<InvalidOperationException>
+    

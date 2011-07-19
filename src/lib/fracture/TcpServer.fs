@@ -121,6 +121,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         
     ///Starts the accepting a incoming connections.
     member s.Listen(?address, ?port) =
+        if listeningSocket <> null then invalidOp "this server was already started. it is listening on %A" listeningSocket.LocalEndPoint
         let address = defaultArg address "127.0.0.1"
         let port = defaultArg port 80
         //initialise the pools
