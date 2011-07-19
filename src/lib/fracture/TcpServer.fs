@@ -10,10 +10,10 @@ open Common
 open Threading
 
 ///Creates a new TcpServer using the specified parameters
-type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?sent) =
+type TcpServer( poolSize, perOperationBufferSize, acceptBacklogCount, ?received, ?connected, ?disconnected, ?sent) =
 
-    let pool = new BocketPool("regular pool", poolSize, size)
-    let connectionPool = new BocketPool("connection pool", backlog, 288)(*288 bytes is the minimum size for a connection*)
+    let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
+    let connectionPool = new BocketPool("connection pool", acceptBacklogCount, 288)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let mutable disposed = false
     let connections = ref 0
@@ -71,8 +71,8 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                allowDisposing ( fun() ->
-                    received |> Option.iter (fun x -> x (data, remoteEndPointSafe acceptSocket, send acceptSocket completed pool.CheckOut size) ))
+                if received.IsSome then allowDisposing (fun() ->
+                    received.Value(data, remoteEndPointSafe acceptSocket, send acceptSocket completed pool.CheckOut perOperationBufferSize))
 
             //trigger connected
             connected |> Option.iter (fun x-> x(endPoint))
@@ -105,7 +105,8 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             let data = acquireData args
             //trigger received
             allowDisposing (fun () ->
-                received |> Option.iter (fun x-> x (data, remoteEndPointSafe sock, send sock completed pool.CheckOut size))
+                if received.IsSome then
+                    received.Value(data, remoteEndPointSafe sock, send sock completed pool.CheckOut perOperationBufferSize)
                 //get on with the next receive
                 let saea = pool.CheckOut()
                 saea.UserToken <- sock
@@ -134,7 +135,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
     member s.Send(client, msg:byte[]) =
         let success, client = clients.TryGetValue(client)
         if success then 
-            send client  completed  pool.CheckOut size  msg
+            send client  completed  pool.CheckOut perOperationBufferSize  msg
         else failwith "could not find client %A" client.RemoteEndPoint
         
     ///Starts the accepting a incoming connections.
@@ -147,7 +148,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         pool.Start(completed)
         ///Creates a Socket and starts listening on the specified address and port.
         listeningSocket <- createSocket(IPEndPoint(IPAddress.Parse(address), port))
-        listeningSocket.Listen(backlog)
+        listeningSocket.Listen(acceptBacklogCount)
         listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
 
     ///Used to close the current listening socket.
