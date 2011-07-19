@@ -29,9 +29,18 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
 
     let disconnect (socket:Socket) =
         !-- connections
-        disconnected |> Option.iter (fun x-> x (socket.RemoteEndPoint :?> IPEndPoint))
+        disconnected |> Option.iter (fun x-> x (remoteEndPointSafe socket))
         closeConnection socket
 
+    let allowDisposing operation =
+        if disposed then 
+            ()
+        else
+            try
+                operation()
+            with
+                :? ObjectDisposedException -> ()
+    
     ///This function is called when each clients connects and also on send and receive
     let rec completed (args:SocketAsyncEventArgs) =
         try
@@ -62,7 +71,8 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                received |> Option.iter (fun x -> x (data, acceptSocket.RemoteEndPoint :?> IPEndPoint, send acceptSocket completed pool.CheckOut size) )
+                allowDisposing ( fun() ->
+                    received |> Option.iter (fun x -> x (data, remoteEndPointSafe acceptSocket, send acceptSocket completed pool.CheckOut size) ))
 
             //trigger connected
             connected |> Option.iter (fun x-> x(endPoint))
@@ -70,13 +80,14 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             args.AcceptSocket <- null (*remove the AcceptSocket because we're reusing args*)
 
             //start next accept, *note connectionPool.CheckOut could block
-            let connectionSaea = connectionPool.CheckOut()
-            do listeningSocket.AcceptAsyncSafe(completed, connectionSaea)
+            allowDisposing (fun () -> 
+                let connectionSaea = connectionPool.CheckOut()
+                do listeningSocket.AcceptAsyncSafe(completed, connectionSaea)
                 
-            //start receive on accepted client
-            let receiveSaea = pool.CheckOut()
-            receiveSaea.UserToken <- acceptSocket
-            acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
+                //start receive on accepted client
+                let receiveSaea = pool.CheckOut()
+                receiveSaea.UserToken <- acceptSocket
+                acceptSocket.ReceiveAsyncSafe(completed, receiveSaea))
         | SocketError.OperationAborted
         | SocketError.Disconnecting when disposed ->
             // harmless to stop accepting here, we're being shutdown.
@@ -93,11 +104,12 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            received |> Option.iter (fun x-> x (data, sock.RemoteEndPoint :?> IPEndPoint, send sock completed pool.CheckOut size))
-            //get on with the next receive
-            let saea = pool.CheckOut()
-            saea.UserToken <- sock
-            sock.ReceiveAsyncSafe( completed, saea)
+            allowDisposing (fun () ->
+                received |> Option.iter (fun x-> x (data, remoteEndPointSafe sock, send sock completed pool.CheckOut size))
+                //get on with the next receive
+                let saea = pool.CheckOut()
+                saea.UserToken <- sock
+                sock.ReceiveAsyncSafe( completed, saea))
         else
             //Something went wrong or the client stopped sending bytes.
             disconnect(sock)
@@ -108,7 +120,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         | SocketError.Success ->
             let sentData = acquireData args
             //notify data sent
-            sent |> Option.iter (fun x-> x (sentData, sock.RemoteEndPoint :?> IPEndPoint))
+            sent |> Option.iter (fun x-> x (sentData, remoteEndPointSafe sock))
         | SocketError.NoBufferSpaceAvailable
         | SocketError.IOPending
         | SocketError.WouldBlock ->

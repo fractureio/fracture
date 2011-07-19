@@ -49,3 +49,6 @@ let acquireData(args:SocketAsyncEventArgs)=
     let data:byte[] = Array.zeroCreate args.BytesTransferred
     Buffer.BlockCopy(args.Buffer, args.Offset, data, 0, data.Length)
     data
+
+let remoteEndPointSafe(sock:Socket) =
+    try sock.RemoteEndPoint :?> System.Net.IPEndPoint with _ -> null

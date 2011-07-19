@@ -64,16 +64,24 @@ let ``server cannot be started twice``() =
     (fun () -> server |> listen) |> should throw typeof<InvalidOperationException>
     
 [<Test>]
-let ``echo server will echo data from naive socket call``([<Values(4,10,20)>]poolSize:int, [<Values(1,2,10,40)>]perSocketBuffer:int, [<Values(2)>]backlog:int, [<Values(1,2,4,8,32,64)>]messageLength:int) = 
+let ``echo server will echo data from naive socket call``
+    ([<Values(2,4,10)>]          poolSize:int, //note 2 appears to be the minimum pool size with our implementation for a single client
+     [<Values(1,2,32,128)>]    perSocketBuffer:int, 
+     [<Values(2)>]             backlog:int, 
+     [<Values(1,2,64)>]        messageLength:int,
+     [<Values(0,1,7)>]         chunkSize:int) = 
     // note we'll test the TcpServer using a simple naked socket to keep one foot on the ground.
     // the client will disconnect after sending its message
     use server = makeEchoServer(poolSize, perSocketBuffer, backlog)
     server |> listen
     use socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     socket.Connect(testEndPoint)
-    use stream = new NetworkStream(socket, true)
+    use stream = new NetworkStream(socket, true, WriteTimeout = 100, ReadTimeout = 100)
     let message:byte[] = [| for i in 0 .. messageLength-1 -> byte(i % 256) |]
-    stream.Write(message, 0, message.Length)
+    let rec write i n =
+        stream.Write(message, i, min n (message.Length - i))
+        if i + n < message.Length then write (i+n) n
+    write 0 (if chunkSize = 0 then message.Length else chunkSize)
     let buffer:byte[] = Array.zeroCreate message.Length
     let rec read i =
         let bytes = stream.Read(buffer, i, message.Length - i)
