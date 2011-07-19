@@ -23,7 +23,7 @@ type internal BocketPool(name, number, size) =
         let res =x()
         sw.Stop()
         if sw.ElapsedTicks > 500000L || pool.Count < 10  then
-            Console.WriteLine(sprintf "Slow Bocket %s get: %fms, count: %d" name sw.Elapsed.TotalMilliseconds pool.Count)
+            sprintf "Slow Bocket %s get: %fms, count: %d" name sw.Elapsed.TotalMilliseconds pool.Count |> Common.logger
         res 
 
     member this.Start(callback) =

@@ -4,6 +4,9 @@ open System
 open System.Net.Sockets
 open SocketExtensions
 
+/// Enables 3rd parties to inject their own logging framework for receiving errors
+let mutable logger : string->unit = fun message -> Console.Error.WriteLine(message)
+
 /// Creates a Socket and binds it to specified IPEndpoint, if you want a sytem assigned one Use IPEndPoint(IPAddress.Any, 0)
 let createSocket (ipEndPoint) =
     let socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
@@ -26,7 +29,7 @@ let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs)  (msg:
             saea.SetBuffer(saea.Offset, amountToSend)
             if client.Connected then client.SendAsyncSafe(completed, saea)
                                      loop (offset + amountToSend)
-            else Console.WriteLine(sprintf "Not connected to server")
+            else sprintf "Connection lost %A->%A" client.LocalEndPoint client.RemoteEndPoint |> logger
     loop 0  
     
 let acquireData(args:SocketAsyncEventArgs)= 

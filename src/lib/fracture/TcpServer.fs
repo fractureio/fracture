@@ -78,7 +78,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             let receiveSaea = pool.CheckOut()
             receiveSaea.UserToken <- acceptSocket
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
-        else Console.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
+        else sprintf "socket error on accept: %A" args.SocketError |> Common.logger
 
     and processDisconnect (args:SocketAsyncEventArgs) =
         args.UserToken :?> Socket |> disconnect
@@ -109,7 +109,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         | SocketError.IOPending
         | SocketError.WouldBlock ->
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
-        | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
+        | _ -> sprintf "socket error on send: %A" args.SocketError |> Common.logger
 
     static member Create(?received, ?connected, ?disconnected, ?sent) =
         new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
@@ -119,7 +119,7 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
         let success, client = clients.TryGetValue(client)
         if success then 
             send client  completed  pool.CheckOut  msg  size
-        else failwith "could not find client %"
+        else failwith "could not find client %A" client.RemoteEndPoint
         
     ///Starts the accepting a incoming connections.
     member s.Listen(?address, ?port) =

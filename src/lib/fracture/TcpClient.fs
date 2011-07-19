@@ -61,7 +61,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
             //start receive on accepted client
             let saea = pool.CheckOut()
             args.ConnectSocket.ReceiveAsyncSafe(completed, saea)
-        else args.SocketError.ToString() |> printfn "socket error on accept: %s"
+        else sprintf "socket error on accept: %A" args.SocketError |> Common.logger
 
     and processReceive (args:SocketAsyncEventArgs) =
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
@@ -88,7 +88,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         | SocketError.IOPending
         | SocketError.WouldBlock ->
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
-        | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
+        | _ -> sprintf "socket error on send: %A" args.SocketError |> Common.logger
 
     ///This event is fired when a client connects.
     [<CLIEvent>]member this.Connected = connectedEvent.Publish
