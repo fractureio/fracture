@@ -51,7 +51,8 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
 
     and processAccept (args:SocketAsyncEventArgs) =
         let acceptSocket = args.AcceptSocket
-        if args.SocketError = SocketError.Success then
+        match args.SocketError with
+        | SocketError.Success ->
             //process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
             let success = clients.TryAdd(endPoint, acceptSocket) (*add client to dictionary*)
@@ -76,7 +77,12 @@ type TcpServer( poolSize, size, backlog, ?received, ?connected, ?disconnected, ?
             let receiveSaea = pool.CheckOut()
             receiveSaea.UserToken <- acceptSocket
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
-        else sprintf "socket error on accept: %A" args.SocketError |> Common.logger
+        | SocketError.OperationAborted
+        | SocketError.Disconnecting when disposed ->
+            // harmless to stop accepting here, we're being shutdown.
+            ()
+        | _ ->
+            sprintf "socket error on accept: %A" args.SocketError |> Common.logger
 
     and processDisconnect (args:SocketAsyncEventArgs) =
         args.UserToken :?> Socket |> disconnect
