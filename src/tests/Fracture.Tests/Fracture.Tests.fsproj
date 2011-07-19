@@ -34,6 +34,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <Compile Include="PipeletsTest.fs" />
+    <Compile Include="EchoServerTest.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FsUnit.NUnit-0.9.0">
