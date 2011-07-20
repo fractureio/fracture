@@ -31,13 +31,13 @@ let disposeSocket (socket:Socket) =
     socket.Dispose()
 
 /// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
-let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs) bufferLength (msg:byte[]) = 
+let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs) bufferLength (msg:ArraySegment<byte>) = 
     let rec loop offset =
-        if offset < msg.Length then
+        if offset < msg.Count then
             let saea = getSaea()
-            let amountToSend = min (msg.Length - offset) bufferLength
+            let amountToSend = min (msg.Count - offset) bufferLength
             saea.UserToken <- client
-            Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, amountToSend)
+            Buffer.BlockCopy(msg.Array, msg.Offset + offset, saea.Buffer, saea.Offset, amountToSend)
             saea.SetBuffer(saea.Offset, amountToSend)
             if client.Connected then client.SendAsyncSafe(completed, saea)
                                      loop (offset + amountToSend)
@@ -45,10 +45,7 @@ let send (client:Socket) completed (getSaea:unit -> SocketAsyncEventArgs) buffer
     loop 0  
     
 let acquireData(args:SocketAsyncEventArgs)= 
-    //process received data
-    let data:byte[] = Array.zeroCreate args.BytesTransferred
-    Buffer.BlockCopy(args.Buffer, args.Offset, data, 0, data.Length)
-    data
+    ArraySegment(args.Buffer, args.Offset, args.BytesTransferred)
 
 let remoteEndPointSafe(sock:Socket) =
     try sock.RemoteEndPoint :?> System.Net.IPEndPoint with _ -> null

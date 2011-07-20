@@ -98,7 +98,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     [<CLIEvent>]member this.Received = receivedEvent.Publish
 
     ///Sends the specified message to the client.
-    member this.Send(msg:byte[]) =
+    member this.Send(msg:ArraySegment<byte>) =
         if listeningSocket.Connected then
            send listeningSocket  completed  pool.CheckOut size  msg
         else listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger

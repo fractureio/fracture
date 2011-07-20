@@ -132,7 +132,7 @@ type TcpServer( poolSize, perOperationBufferSize, acceptBacklogCount, ?received,
         new TcpServer(5000, 4096, 100, ?received = received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
     ///Sends the specified message to the client.
-    member s.Send(client, msg:byte[]) =
+    member s.Send(client, msg:ArraySegment<byte>) =
         let success, client = clients.TryGetValue(client)
         if success then 
             send client  completed  pool.CheckOut perOperationBufferSize  msg

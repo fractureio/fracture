@@ -14,17 +14,17 @@ let generateCircularSeq s =
 //                  |> generateCircularSeq 
 //                  |> Seq.take quoteSize 
 //                  |> Seq.toArray
-let testMessage = Array.init quoteSize (fun x -> 0uy)
+let testMessage = ArraySegment(Array.init quoteSize (fun x -> 0uy))
 
 let startClient(port, i) = async {
     do! Async.Sleep(i*50)
     Console.WriteLine(sprintf "Client %d" i )
     let client = new TcpClient()
-    client.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "Sent: %A bytes" (fst x).Length) )
+    client.Sent |> Observable.add (fun x -> Console.WriteLine( sprintf  "Sent: %A bytes" (fst x).Count) )
 
     client.Received
     |> Observable.add (fun x ->
-        let res = sprintf "%A %A received: %i bytes" DateTime.Now.TimeOfDay (snd x) (fst x).Length 
+        let res = sprintf "%A %A received: %i bytes" DateTime.Now.TimeOfDay (snd x) (fst x).Count 
         Console.WriteLine(res ))
 
     client.Connected 

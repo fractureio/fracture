@@ -14,12 +14,21 @@ let shouldBeListening() = isListeningTo testEndPoint |> should be True
 let shouldNotBeListening() = isListeningTo testEndPoint |> should be False
 
 let makeEchoServer(poolSize:int, perSocketBuffer:int, backlog:int) =
-    let received (data:byte[], client:IPEndPoint, echo:byte[]->unit) =
-        echo data
+    let random = Random(poolSize*1000000 + perSocketBuffer*1000 + backlog)
+    let randomOffset() = random.Next(10)
+    let received (data:ArraySegment<byte>, client:IPEndPoint, echo:ArraySegment<byte>->unit) =
+        if random.NextDouble() < 0.5 then
+            let offset1 = randomOffset()
+            let offset2 = randomOffset()
+            let localBuffer = Array.zeroCreate (data.Count + offset1 + offset2)
+            Array.blit (data.Array) (data.Offset) localBuffer offset1 data.Count
+            echo(ArraySegment(localBuffer, offset1, data.Count))
+        else
+            echo data
         
     let connected (client:IPEndPoint) = ()
     let disconnected (client:IPEndPoint) = ()
-    let sent (data:byte[], client:IPEndPoint) = ()
+    let sent (data:ArraySegment<byte>, client:IPEndPoint) = ()
 
     let server = new TcpServer(poolSize, perSocketBuffer, backlog, received, connected, disconnected, sent)
 
