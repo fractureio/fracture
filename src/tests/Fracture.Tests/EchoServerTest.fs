@@ -83,11 +83,9 @@ let ``echo server will echo data from naive socket call``
      [<Values(1,5)>]           backlog:int,  // 2 is the minimum size for this backlog too, so this is testing that we adjust it properly
      [<Values(1,2,3,17,64)>]   messageLength:int,
      [<Values(0,1,7)>]         chunkSize:int) = // 0 chunk size means send the whole thing
-    shouldNotBeListening()
     let echoTest() =
         use server = makeEchoServer(poolSize, perSocketBuffer, backlog)
         server |> listen
-        shouldBeListening()
         use socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
         socket.Connect(testEndPoint)
         use stream = new NetworkStream(socket, true, WriteTimeout = 100, ReadTimeout = 100)
@@ -103,4 +101,3 @@ let ``echo server will echo data from naive socket call``
         read 0
         buffer |> should equal message
     echoTest()
-    shouldNotBeListening()
