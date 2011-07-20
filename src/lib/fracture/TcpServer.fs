@@ -13,7 +13,7 @@ open Threading
 type TcpServer( poolSize, perOperationBufferSize, acceptBacklogCount, ?received, ?connected, ?disconnected, ?sent) =
 
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
-    let connectionPool = new BocketPool("connection pool", acceptBacklogCount, 288)(*288 bytes is the minimum size for a connection*)
+    let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, 288)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let mutable disposed = false
     let connections = ref 0
