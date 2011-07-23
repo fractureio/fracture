@@ -18,14 +18,14 @@ type internal BocketPool(name, number, size) =
                     .Dispose()
             pool.Dispose()
 
-    let time x = 
-        let sw = new System.Diagnostics.Stopwatch()
-        sw.Start()
-        let res =x()
-        sw.Stop()
-        if sw.ElapsedTicks > 500000L || pool.Count < 10  then
-            Console.WriteLine(sprintf "Slow Bocket %s get: %fms, count: %d" name sw.Elapsed.TotalMilliseconds pool.Count)
-        res 
+    let checkedOperation operation onFailure =
+        try 
+            operation()
+        with
+            | :? ArgumentNullException
+            | :? InvalidOperationException -> onFailure()
+
+    let raiseDisposed() = raise(ObjectDisposedException(name))
 
     member this.Start(callback) =
         for n in 0 .. number - 1 do
@@ -35,16 +35,23 @@ type internal BocketPool(name, number, size) =
             this.CheckIn(saea)
 
     member this.CheckOut() =
-        time pool.Take
+        if disposed then
+            raiseDisposed()
+        else
+            checkedOperation pool.Take raiseDisposed
 
     member this.CheckIn(saea) =
-        if not disposed then
+        if disposed then
+            // the pool is kicked; let's just dispose of it ourselves
+            saea.Dispose()
+        else 
             // ensure the the full range of the buffer is available this may have changed
             // if the bocket was previously used for a send or connect operation
             if saea.Count < size then 
                 saea.SetBuffer(saea.Offset, size)
-            pool.Add(saea)
-
+            // we might be trying to update the the pool when it's already been disposed 
+            checkedOperation (fun () -> pool.Add(saea)) saea.Dispose
+            
     member this.Count =
         pool.Count
 
