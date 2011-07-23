@@ -14,15 +14,15 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let connected = defaultArg connected (fun ep -> Console.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
     let disconnected = defaultArg disconnected (fun ep -> Console.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
     let sent = defaultArg sent (fun (received:byte[], ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
-
-    let pool = new BocketPool("regular pool", poolSize, perOperationBufferSize)
+    let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
+    let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, 288)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     let mutable disposed = false
         
     //ensures the listening socket is shutdown on disposal.
-    let cleanUp(socket:Socket) = 
+    let cleanUp(socket) = 
         if not disposed && socket <> null then
             disposed <- true
             disposeSocket socket
@@ -46,7 +46,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             args.UserToken <- null
             pool.CheckIn(args)
 
-    and processAccept (args:SocketAsyncEventArgs) =
+    and processAccept (args) =
         let acceptSocket = args.AcceptSocket
         match args.SocketError with
         | SocketError.Success ->
@@ -87,12 +87,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         | SocketError.Disconnecting when disposed -> ()// harmless to stop accepting here, we're being shutdown.
         | _ -> Console.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
          
-
-    and processDisconnect (args:SocketAsyncEventArgs) =
+    and processDisconnect (args) =
         let sd = args.UserToken :?> SocketDescriptor
         sd |> disconnect
 
-    and processReceive (args:SocketAsyncEventArgs) =
+    and processReceive (args) =
         let sd = args.UserToken :?> SocketDescriptor
         let socket = sd.Socket
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
@@ -110,7 +109,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             //Something went wrong or the client stopped sending bytes.
             disconnect sd
 
-    and processSend (args:SocketAsyncEventArgs) =
+    and processSend (args) =
         let sd = args.UserToken :?> SocketDescriptor
         match args.SocketError with
         | SocketError.Success ->
@@ -145,7 +144,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             member this.Dispose() = cleanUp listeningSocket }
 
     ///Sends the specified message to the client.
-    member s.Send(clientEndPoint, msg:byte[], ?close) =
+    member s.Send(clientEndPoint, msg, ?close) =
         let success, client = clients.TryGetValue(clientEndPoint)
         let close = defaultArg close true
         if success then 

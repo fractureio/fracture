@@ -10,8 +10,7 @@ type SocketDescriptor = {Socket:Socket; RemoteEndPoint:IPEndPoint}
 /// Creates a Socket and binds it to specified IPEndpoint, if you want a sytem assigned one Use IPEndPoint(IPAddress.Any, 0)
 let createSocket (ipEndPoint) =
     let socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-    socket.Bind(ipEndPoint)
-    socket
+    socket.Bind(ipEndPoint);socket
 
 let closeConnection (sock:Socket) =
     try sock.Shutdown(SocketShutdown.Both)

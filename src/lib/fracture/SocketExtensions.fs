@@ -8,8 +8,7 @@ open System.Net.Sockets
 /// invokeAsyncMethod ensures the callback always gets called,
 /// even if an error occurs or the Async method completes synchronously.
 let invokeAsyncMethod( asyncmethod, callback, args:SocketAsyncEventArgs) =
-    let result = asyncmethod args
-    if result <> true then 
+    if asyncmethod args then 
         callback args
 
 type Socket with 
