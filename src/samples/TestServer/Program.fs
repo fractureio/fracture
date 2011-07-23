@@ -96,9 +96,7 @@ try
     use subscription = TcpServer.Create(fun (a,svr,sd) -> 
         Console.WriteLine(System.Text.Encoding.ASCII.GetString(a))
         let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToShortDateString())
-                        
         let body = "Hello world.\r\nHello."
-
         let encoded = System.Text.Encoding.ASCII.GetBytes(header + body)
         svr.Send(sd.RemoteEndPoint, encoded)).Listen(port = 6667)
 

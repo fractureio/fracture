@@ -27,14 +27,12 @@ type internal BocketPool(name, number, size) =
         res 
 
     member this.Start(callback) =
-        let rec loop n =
-            if n < number then
-                let saea = new SocketAsyncEventArgs()
-                saea.Completed |> Observable.add callback
-                saea.SetBuffer(buffer, n, size)
-                this.CheckIn(saea)
-                loop (n + 1)
-        loop 0                    
+        for n in 0 .. number - 1 do
+            let saea = new SocketAsyncEventArgs()
+            saea.Completed |> Observable.add callback
+            saea.SetBuffer(buffer, n*size, size)
+            this.CheckIn(saea)
+
     member this.CheckOut() =
         time pool.Take
 

@@ -102,9 +102,9 @@ type TcpClient(ipEndPoint, poolSize, size) =
 
     ///Sends the specified message to the client.
     member this.Send(msg:byte[], (close:bool)) =
-        try
-           send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint}  completed  pool.CheckOut  msg  size close
-        finally serverEndPoint |> disconnectedEvent.Trigger
+        if listeningSocket.Connected then
+            send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint}  completed  pool.CheckOut  size msg close
+        else listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger
         
     ///Starts connecting with remote server
     member this.Start(ipEndPoint) = 

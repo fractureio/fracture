@@ -17,24 +17,34 @@ let closeConnection (sock:Socket) =
     try sock.Shutdown(SocketShutdown.Both)
     finally sock.Close()
 
-let send (client:SocketDescriptor) completed (getSaea:unit -> SocketAsyncEventArgs)  (msg:byte[]) maxSize close= 
+let disposeSocket (socket:Socket) =
+    try
+        socket.Shutdown(SocketShutdown.Both)
+        socket.Disconnect(false)
+        socket.Close()
+    with
+        // note: the calls above can sometimes result in
+        // SocketException: A request to send or receive data was disallowed because the socket
+        // is not connected and (when sending on a datagram socket using a sendto call) no 
+        // address was supplied
+        :? System.Net.Sockets.SocketException -> ()
+    socket.Dispose()
+
+/// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
+let send (client) completed (getSaea:unit -> SocketAsyncEventArgs) bufferLength (msg:byte[]) close = 
     let rec loop offset =
         if offset < msg.Length then
-            let amountToSend =
-                let remaining = msg.Length - offset in
-                if remaining > maxSize then maxSize else remaining
-            try
-                let saea = getSaea()
-                saea.UserToken <- client
-                Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, amountToSend)
-                saea.SetBuffer(saea.Offset, amountToSend)
+            let saea = getSaea()
+            let amountToSend = min (msg.Length - offset) bufferLength
+            saea.UserToken <- client
+            Buffer.BlockCopy(msg, offset, saea.Buffer, saea.Offset, amountToSend)
+            saea.SetBuffer(saea.Offset, amountToSend)
+            if client.Socket.Connected then 
                 client.Socket.SendAsyncSafe(completed, saea)
                 loop (offset + amountToSend)
-            with
-            | e ->
-                printfn "%s" e.Message
-    loop 0 
-    if close then client.Socket.Close(2) 
+            else Console.WriteLine(sprintf "Connection lost to%A" client.RemoteEndPoint)
+    loop 0  
+    if close then client.Socket.Close(2)
     
 let acquireData(args:SocketAsyncEventArgs)= 
     //process received data
