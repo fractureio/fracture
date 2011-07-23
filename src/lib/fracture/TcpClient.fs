@@ -21,9 +21,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let cleanUp() = 
         if not disposed then
             disposed <- true
-            listeningSocket.Shutdown(SocketShutdown.Both)
-            listeningSocket.Disconnect(false)
-            listeningSocket.Close()
+            disposeSocket listeningSocket
             (pool :> IDisposable).Dispose()
 
     let connectedEvent = new Event<_>()

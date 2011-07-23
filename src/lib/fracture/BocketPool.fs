@@ -16,6 +16,7 @@ type internal BocketPool(name, number, size) =
             while pool.Count > 1 do
                 pool.Take()
                     .Dispose()
+            pool.Dispose()
 
     let time x = 
         let sw = new System.Diagnostics.Stopwatch()
@@ -37,13 +38,15 @@ type internal BocketPool(name, number, size) =
         time pool.Take
 
     member this.CheckIn(saea) =
-        // ensure the the full range of the buffer is available this may have changed
-        // if the bocket was previously used for a send or connect operation
-        if saea.Count < size then 
-            saea.SetBuffer(saea.Offset, size)
-        pool.Add(saea)
+        if not disposed then
+            // ensure the the full range of the buffer is available this may have changed
+            // if the bocket was previously used for a send or connect operation
+            if saea.Count < size then 
+                saea.SetBuffer(saea.Offset, size)
+            pool.Add(saea)
 
     member this.Count =
         pool.Count
+
     interface IDisposable with
         member this.Dispose() = cleanUp()
