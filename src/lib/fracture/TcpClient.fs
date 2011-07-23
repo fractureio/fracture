@@ -21,9 +21,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let cleanUp() = 
         if not disposed then
             disposed <- true
-            listeningSocket.Shutdown(SocketShutdown.Both)
-            listeningSocket.Disconnect(false)
-            listeningSocket.Close()
+            disposeSocket listeningSocket
             (pool :> IDisposable).Dispose()
 
     let connectedEvent = new Event<_>()
@@ -61,7 +59,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
             //start receive on accepted client
             let saea = pool.CheckOut()
             args.ConnectSocket.ReceiveAsyncSafe(completed, saea)
-        else args.SocketError.ToString() |> printfn "socket error on accept: %s"
+        else sprintf "socket error on accept: %A" args.SocketError |> Common.logger
 
     and processReceive (args:SocketAsyncEventArgs) =
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
@@ -88,7 +86,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         | SocketError.IOPending
         | SocketError.WouldBlock ->
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
-        | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
+        | _ -> sprintf "socket error on send: %A" args.SocketError |> Common.logger
 
     ///This event is fired when a client connects.
     [<CLIEvent>]member this.Connected = connectedEvent.Publish
@@ -100,9 +98,9 @@ type TcpClient(ipEndPoint, poolSize, size) =
     [<CLIEvent>]member this.Received = receivedEvent.Publish
 
     ///Sends the specified message to the client.
-    member this.Send(msg:byte[]) =
+    member this.Send(msg:ArraySegment<byte>) =
         if listeningSocket.Connected then
-           send listeningSocket  completed  pool.CheckOut  msg  size
+           send listeningSocket  completed  pool.CheckOut size  msg
         else listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger
         
     ///Starts connecting with remote server

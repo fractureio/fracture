@@ -11,8 +11,8 @@ System.AppDomain.CurrentDomain.UnhandledException |> Observable.add debug
 try
     TcpServer.Create(
         disconnected = (fun ep -> Console.WriteLine(sprintf "%A %A: Disconnected" DateTime.Now.TimeOfDay ep)), 
-        sent = (fun (received,ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.Now.TimeOfDay received.Length )),
-        received = (fun (a,b,c) -> (c a a.Length))
+        sent = (fun (received,ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.Now.TimeOfDay received.Count )),
+        received = (fun (data,ep,send) -> (send data))
         (*connected = fun(ep) -> ()*)
     ).Listen(port = 6667)
 

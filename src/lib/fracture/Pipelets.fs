@@ -39,7 +39,7 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
                 with //force loop resume on error
                 | ex -> 
                     // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
-                    printf "%A Error: %A" DateTime.Now.TimeOfDay ex.Message
+                    sprintf "%A Error: %A" DateTime.Now.TimeOfDay ex.Message |> Common.logger
                     return! loop routes
             | Attach(stage) -> return! loop (stage::routes)
             | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
@@ -50,7 +50,7 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
         if ss.Wait(maxwait) then
             mailbox.Post(Payload data)
         // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
-        else printf "%A Overflow: %A" DateTime.Now.TimeOfDay data //overflow
+        else sprintf "%A Overflow: %A" DateTime.Now.TimeOfDay data |> Common.logger //overflow
 
     /// Gets the name of the pipelet.
     member this.Name with get() = name
