@@ -10,12 +10,12 @@ open Common
 open Threading
 
 ///Creates a new TcpServer using the specified parameters
-type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?sent) as s=
+type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent) as s=
     let connected = defaultArg connected (fun ep -> Console.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
     let disconnected = defaultArg disconnected (fun ep -> Console.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
     let sent = defaultArg sent (fun (received:byte[], ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
 
-    let pool = new BocketPool("regular pool", poolSize, size)
+    let pool = new BocketPool("regular pool", poolSize, perOperationBufferSize)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
@@ -137,17 +137,8 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
         pool.Start(completed)
         ///Creates a Socket and starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
-        listeningSocket.Listen(backlog)
+        listeningSocket.Listen(acceptBacklogCount)
 
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
         listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
 
         { new IDisposable with
@@ -158,7 +149,7 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
         let success, client = clients.TryGetValue(clientEndPoint)
         let close = defaultArg close true
         if success then 
-            send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut size msg close
+            send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut perOperationBufferSize msg close
         else failwith "could not find client %"
         
     interface IDisposable with 

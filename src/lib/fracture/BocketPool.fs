@@ -4,10 +4,10 @@ open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
 
-type internal BocketPool(name, number, size) =
-    let totalsize = (number * size)
+type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
+    let totalsize = (maxPoolCount * perBocketBufferSize)
     let buffer = Array.zeroCreate<byte> totalsize
-    let pool = new BlockingCollection<SocketAsyncEventArgs>(number:int)
+    let pool = new BlockingCollection<SocketAsyncEventArgs>(maxPoolCount:int)
     let mutable disposed = false
     let cleanUp() = 
         if not disposed then
@@ -28,10 +28,10 @@ type internal BocketPool(name, number, size) =
     let raiseDisposed() = raise(ObjectDisposedException(name))
 
     member this.Start(callback) =
-        for n in 0 .. number - 1 do
+        for n in 0 .. maxPoolCount - 1 do
             let saea = new SocketAsyncEventArgs()
             saea.Completed |> Observable.add callback
-            saea.SetBuffer(buffer, n*size, size)
+            saea.SetBuffer(buffer, n*perBocketBufferSize, perBocketBufferSize)
             this.CheckIn(saea)
 
     member this.CheckOut() =
@@ -47,8 +47,8 @@ type internal BocketPool(name, number, size) =
         else 
             // ensure the the full range of the buffer is available this may have changed
             // if the bocket was previously used for a send or connect operation
-            if saea.Count < size then 
-                saea.SetBuffer(saea.Offset, size)
+            if saea.Count < perBocketBufferSize then 
+                saea.SetBuffer(saea.Offset, perBocketBufferSize)
             // we might be trying to update the the pool when it's already been disposed 
             checkedOperation (fun () -> pool.Add(saea)) saea.Dispose
             
