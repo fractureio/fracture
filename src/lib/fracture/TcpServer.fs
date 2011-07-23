@@ -33,7 +33,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         disconnected sd.RemoteEndPoint
         sd.Socket.Close()
 
-    ///This function is called when each clients connects and also on send and receive
+    ///This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
@@ -50,10 +50,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let acceptSocket = args.AcceptSocket
         match args.SocketError with
         | SocketError.Success ->
-
-            //start next accept, *note connectionPool.CheckOut could block
-            //Async.Start(async{let saea = pool.CheckOut()
-            //                  do listeningSocket.AcceptAsyncSafe(completed, saea)})
+            //start next accept
             let saea = pool.CheckOut()
             do listeningSocket.AcceptAsyncSafe(completed, saea)
 
@@ -70,9 +67,6 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             let sd = {Socket = acceptSocket; RemoteEndPoint = endPoint}
 
             //start receive on accepted client
-            //Async.Start(async{let receiveSaea = pool.CheckOut()
-            //                  receiveSaea.UserToken <- sd
-            //                  acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)})
             let receiveSaea = pool.CheckOut()
             receiveSaea.UserToken <- sd
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
@@ -84,7 +78,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 received (data, s, sd)
         
         | SocketError.OperationAborted
-        | SocketError.Disconnecting when disposed -> ()// harmless to stop accepting here, we're being shutdown.
+        | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
         | _ -> Console.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
          
     and processDisconnect (args) =
@@ -104,10 +98,9 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 let saea = pool.CheckOut()
                 saea.UserToken <- sd
                 socket.ReceiveAsyncSafe( completed, saea)
-            else ()//? what do we do here?
-        else
-            //Something went wrong or the client stopped sending bytes.
-            disconnect sd
+            else ()
+        //0 byte receive - disconnect.
+        else disconnect sd
 
     and processSend (args) =
         let sd = args.UserToken :?> SocketDescriptor
@@ -129,19 +122,14 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
     ///Starts the accepting a incoming connections.
     member s.Listen(?address, ?port) =
-        //if listeningSocket <> null then invalidOp "This server was already started. it is listening on %A." listeningSocket.LocalEndPoint
         let address = defaultArg address IPAddress.Loopback
         let port = defaultArg port 80
-        //initialise the pools
+        //initialise the pool
         pool.Start(completed)
-        ///Creates a Socket and starts listening on the specified address and port.
+        ///starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
-
         listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
-
-        { new IDisposable with
-            member this.Dispose() = cleanUp listeningSocket }
 
     ///Sends the specified message to the client.
     member s.Send(clientEndPoint, msg, ?close) =
