@@ -48,11 +48,13 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
             | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
         finally
             args.UserToken <- null
-            let getpool = 
-                function 
-                | SocketAsyncOperation.Accept -> connectionPool
-                | _ -> pool
-            args.LastOperation |> getpool |> fun p -> p.CheckIn(args)
+            if not (args.LastOperation = SocketAsyncOperation.Accept) then
+//            let getpool = 
+//                function 
+//                | SocketAsyncOperation.Accept -> connectionPool
+//                | _ -> pool
+//            args.LastOperation |> getpool |> fun p -> p.CheckIn(args)
+                pool.CheckIn(args)
 
     and processAccept (args:SocketAsyncEventArgs) =
         let acceptSocket = args.AcceptSocket
@@ -69,8 +71,8 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
 
             //start next accept, *note connectionPool.CheckOut could block
             //Async.Start( async{ 
-            let saea = connectionPool.CheckOut()
-            do listeningSocket.AcceptAsyncSafe(completed, saea) //})
+            //let saea = connectionPool.CheckOut()
+            do listeningSocket.AcceptAsyncSafe(completed, args) //})
 
             let sd = {Socket = acceptSocket; RemoteEndPoint = endPoint}
 
@@ -123,7 +125,7 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
     static member Create(received, ?connected, ?disconnected, ?sent) =
-        new TcpServer(5000, 1024, 1000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+        new TcpServer(5000, 1024, 2000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
     member s.Connections = connections
 
@@ -137,7 +139,9 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
         ///Creates a Socket and starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(backlog)
+
         listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
+
         { new IDisposable with
             member this.Dispose() = cleanUp listeningSocket }
 

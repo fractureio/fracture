@@ -33,6 +33,9 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
+    <Reference Include="HttpMachine">
+      <HintPath>Z:\davethomas On My Mac\Code\httpmachine\HttpMachine\bin\Release\HttpMachine.dll</HintPath>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
