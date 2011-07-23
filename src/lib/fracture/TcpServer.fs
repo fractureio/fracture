@@ -49,11 +49,6 @@ type TcpServer(poolSize, size, backlog, received, ?connected, ?disconnected, ?se
         finally
             args.UserToken <- null
             if not (args.LastOperation = SocketAsyncOperation.Accept) then
-//            let getpool = 
-//                function 
-//                | SocketAsyncOperation.Accept -> connectionPool
-//                | _ -> pool
-//            args.LastOperation |> getpool |> fun p -> p.CheckIn(args)
                 pool.CheckIn(args)
 
     and processAccept (args:SocketAsyncEventArgs) =
