@@ -33,9 +33,6 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <Reference Include="HttpMachine">
-      <HintPath>Z:\davethomas On My Mac\Code\httpmachine\HttpMachine\bin\Release\HttpMachine.dll</HintPath>
-    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
@@ -50,6 +47,11 @@
     <ProjectReference Include="..\..\lib\fracture\Fracture.fsproj">
       <Name>Fracture</Name>
       <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\lib\http\Fracture.Http.fsproj">
+      <Name>Fracture.Http</Name>
+      <Project>{13571762-e1c9-492a-9141-37aa0094759a}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

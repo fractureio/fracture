@@ -22,10 +22,7 @@ let disposeSocket (socket:Socket) =
         socket.Disconnect(false)
         socket.Close()
     with
-        // note: the calls above can sometimes result in
-        // SocketException: A request to send or receive data was disallowed because the socket
-        // is not connected and (when sending on a datagram socket using a sendto call) no 
-        // address was supplied
+        // note: the calls above can sometimes result in SocketException.
         :? System.Net.Sockets.SocketException -> ()
     socket.Dispose()
 

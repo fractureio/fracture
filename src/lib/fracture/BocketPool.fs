@@ -42,14 +42,14 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.CheckIn(saea) =
         if disposed then
-            // the pool is kicked; let's just dispose of it ourselves
+            // the pool is kicked, dispose of it ourselves.
             saea.Dispose()
         else 
             // ensure the the full range of the buffer is available this may have changed
-            // if the bocket was previously used for a send or connect operation
+            // if the bocket was previously used for a send or connect operation.
             if saea.Count < perBocketBufferSize then 
                 saea.SetBuffer(saea.Offset, perBocketBufferSize)
-            // we might be trying to update the the pool when it's already been disposed 
+            // we might be trying to update the the pool when it's already been disposed. 
             checkedOperation (fun () -> pool.Add(saea)) saea.Dispose
             
     member this.Count =

@@ -104,5 +104,4 @@ let basicRouter messages (routes:'a IPipeletInput seq) =
 //sends the message to all attached routes
 let multicastRouter messages (routes:'a IPipeletInput seq) =
     if routes |> Seq.isEmpty then ()
-    else messages |> Seq.iter (fun msg -> do routes |> Seq.iter (fun (s:'a IPipeletInput) -> s.Post msg) )
-    
+    else messages |> Seq.iter (fun msg -> do routes |> Seq.iter (fun (s:'a IPipeletInput) -> s.Post msg) )  
