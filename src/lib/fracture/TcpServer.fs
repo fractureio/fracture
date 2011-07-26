@@ -1,6 +1,7 @@
 ﻿namespace Fracture
 
 open System
+open System.Diagnostics
 open System.Net
 open System.Net.Sockets
 open System.Collections.Generic
@@ -11,9 +12,9 @@ open Threading
 
 ///Creates a new TcpServer using the specified parameters
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent) as s=
-    let connected = defaultArg connected (fun ep -> Console.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
-    let disconnected = defaultArg disconnected (fun ep -> Console.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
-    let sent = defaultArg sent (fun (received:byte[], ep) -> Console.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
+    let connected = defaultArg connected (fun ep -> Debug.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
+    let disconnected = defaultArg disconnected (fun ep -> Debug.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
+    let sent = defaultArg sent (fun (received:byte[], ep) -> Debug.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
     let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, 288)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
@@ -79,7 +80,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         
         | SocketError.OperationAborted
         | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
-        | _ -> Console.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
+        | _ -> Debug.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
          
     and processDisconnect (args) =
         let sd = args.UserToken :?> SocketDescriptor

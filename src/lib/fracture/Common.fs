@@ -1,6 +1,7 @@
 ﻿module Fracture.Common
 
 open System
+open System.Diagnostics
 open System.Net
 open System.Net.Sockets
 open SocketExtensions
@@ -38,7 +39,7 @@ let send (client) completed (getSaea:unit -> SocketAsyncEventArgs) bufferLength 
             if client.Socket.Connected then 
                 client.Socket.SendAsyncSafe(completed, saea)
                 loop (offset + amountToSend)
-            else Console.WriteLine(sprintf "Connection lost to%A" client.RemoteEndPoint)
+            else Debug.WriteLine(sprintf "Connection lost to%A" client.RemoteEndPoint)
     loop 0  
     if close then client.Socket.Close(2)
     

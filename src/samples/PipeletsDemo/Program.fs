@@ -24,7 +24,8 @@ let countThis (a:String) =
         sw.Stop()
         printfn "Execution time: %A" sw.Elapsed.TotalMilliseconds
         printfn "Items input: %d" number
-        printfn "Time per item: %A ms (Elapsed Time / Number of items)" (TimeSpan.FromTicks(sw.Elapsed.Ticks / int64 number).TotalMilliseconds)
+        printfn "Time per item: %A ms (Elapsed Time / Number of items)" 
+            (TimeSpan.FromTicks(sw.Elapsed.Ticks / int64 number).TotalMilliseconds)
         printfn "Press a key to exit."
     counter |> Seq.singleton
 
@@ -56,7 +57,6 @@ let final = new Pipelet<_,_>("Final", countThis, basicRouter, number, -1)
 
 stage1 ++> stage2 ++> final|> ignore
 stage1 ++> stage3 ++> final |> ignore
-stage1 ++> stage4 ++> final |> ignore
 stage1 ++> stage4 ++> final |> ignore
 stage1 ++> stage5 ++> final |> ignore
 stage1 ++> stage6 ++> final |> ignore
