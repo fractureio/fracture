@@ -12,10 +12,10 @@ let oneToSingleton a b f=
     let result = b |> f 
     result |> Seq.singleton
 
-/// total number to run through test cycle
+/// Total number to run through test cycle
 let number = 1000000
 
-/// hack to record when we are done
+/// To Record when we are done
 let counter = ref 0
 let sw = new Stopwatch()
 let countThis (a:String) =

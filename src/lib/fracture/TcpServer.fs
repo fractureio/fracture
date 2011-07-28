@@ -57,8 +57,8 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
             //process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
-            let success = clients.TryAdd(endPoint, acceptSocket) (*add client to dictionary*)
-            if not success then failwith "client could not be added"
+            clients.AddOrUpdate(endPoint, acceptSocket, fun a b -> (acceptSocket)) |> ignore
+            //if not success then failwith "client could not be added"
 
             //trigger connected
             connected endPoint
@@ -130,7 +130,8 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         ///starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+        for i in 1 .. 4 do
+            listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
 
     ///Sends the specified message to the client.
     member s.Send(clientEndPoint, msg, ?close) =
