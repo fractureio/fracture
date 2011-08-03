@@ -7,14 +7,21 @@ open Fracture.Common
 open HttpMachine
 open System.Collections.Generic
 open System.Diagnostics
+open System.Collections.Concurrent
 
-type HttpServer(headers, body) = 
-    let svr = TcpServer.Create(fun (data,svr,sd) -> 
-        let parserDelegate = ParserDelegate( (fun (a,b) ->headers(a,b,svr,sd)), (fun (data) -> (body(data, svr,sd))), (fun(req)-> ()) )
-        let parser = HttpParser(parserDelegate)
-        parser.Execute( new ArraySegment<_>(data))|> ignore)
+type HttpServer(headers, body) as this = 
+
+    let svr = TcpServer.Create( (fun (data,svr,sd) -> 
+
+        let createParser  =
+            let parserDelegate = ParserDelegate( (fun (a,b) -> headers(a,b,this,sd)), (fun (data) -> (body(data, svr,sd))), (fun(req)-> ()) )
+            HttpParser(parserDelegate)
+
+        createParser.Execute( new ArraySegment<_>(data) )|> ignore))
         
     member h.Listen(port) =     
         svr.Listen(port = port)
 
-    member h.Send= svr.Send
+    member h.Send(client, (response:string), close) = 
+        let encoded = System.Text.Encoding.ASCII.GetBytes(response)
+        svr.Send(client, encoded, close)

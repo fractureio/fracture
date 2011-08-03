@@ -11,45 +11,12 @@ let debug (x:UnhandledExceptionEventArgs) =
     Console.ReadLine() |> ignore
 
 System.AppDomain.CurrentDomain.UnhandledException |> Observable.add debug
-
-//try
-//    use subscription = TcpServer.Create(fun (data,svr,sd) -> 
-//        Console.WriteLine(System.Text.Encoding.ASCII.GetString(data))
-//        let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToShortDateString())
-//        let body = "Hello world.\r\nHello."
-//        let encoded = System.Text.Encoding.ASCII.GetBytes(header + body)
-//        do svr.Send(sd.RemoteEndPoint, encoded)).Listen(port = 6667)
-//    "Server Running, press a key to exit." |> printfn "%s"
-//    Console.ReadKey() |> ignore
-//    subscription.Dispose()
-//with
-//| e ->
-//    printfn "%s" e.Message
-//    Console.ReadKey() |> ignore
-
-//        Console.WriteLine(System.Text.Encoding.ASCII.GetString(data))
-//        let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToShortDateString())
-//        let body = "Hello world.\r\nHello."
-//        let encoded = System.Text.Encoding.ASCII.GetBytes(header + body)
-//        do svr.Send(sd.RemoteEndPoint, encoded)
-
+let shortdate = DateTime.UtcNow.ToShortDateString
 open Fracture.HttpServer
 
-let processheaders(headers:HttpRequestHeaders, close, svr:TcpServer, sd) =
-     //Console.WriteLine(System.Text.Encoding.ASCII.GetString(data))
-    let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToShortDateString())
-    let body = "Hello world.\r\nHello."
-    let encoded = System.Text.Encoding.ASCII.GetBytes(header + body)
-    do svr.Send(sd.RemoteEndPoint, encoded, true)
-
-let processbody(body:ArraySegment<_>, svr, sd) =
-    Debug.WriteLine( sprintf "%s" (Text.Encoding.ASCII.GetString(body.Array)) )
-
 let server = HttpServer((fun(headers, close, svr, sd) -> 
-    let header = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fracture\r\nDate: %s\r\n\r\n" (DateTime.UtcNow.ToShortDateString())
-    let body = "Hello world.\r\nHello."
-    let encoded = System.Text.Encoding.ASCII.GetBytes(header + body)
-    do svr.Send(sd.RemoteEndPoint, encoded, true)), body = fun(body, svr, sd) -> 
+    let response = sprintf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 20\r\nConnection: close\r\nServer: Fracture\r\nDate: %s\r\n\r\nHello world.\r\nHello." (shortdate())
+    do svr.Send(sd.RemoteEndPoint, response, true)), body = fun(body, svr, sd) -> 
         Debug.WriteLine( sprintf "%s" (Text.Encoding.ASCII.GetString(body.Array)) ) )
 
 server.Listen(6667)
