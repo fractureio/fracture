@@ -19,6 +19,6 @@ let server = HttpServer((fun(headers, close, svr, sd) ->
     do svr.Send(sd.RemoteEndPoint, response, true)), body = fun(body, svr, sd) -> 
         Debug.WriteLine( sprintf "%s" (Text.Encoding.ASCII.GetString(body.Array)) ) )
 
-server.Listen(6667)
+server.Start(6667)
 printfn "Http Server started"
 Console.ReadKey() |> ignore

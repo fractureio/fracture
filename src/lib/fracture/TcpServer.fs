@@ -16,7 +16,6 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let disconnected = defaultArg disconnected (fun ep -> Debug.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
     let sent = defaultArg sent (fun (received:byte[], ep) -> Debug.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
-    let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, 288)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
@@ -119,10 +118,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     static member Create(received, ?connected, ?disconnected, ?sent) =
         new TcpServer(5000, 1024, 2000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
-    member s.Connections = connections
+    member s.Connections 
+        with get () = connections
 
     ///Starts the accepting a incoming connections.
-    member s.Listen(?address, ?port) =
+    member s.Start(?address, ?port) =
         let address = defaultArg address IPAddress.Loopback
         let port = defaultArg port 80
         //initialise the pool
@@ -130,8 +130,13 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         ///starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
-        for i in 1 .. 4 do
-            listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+
+    member s.Stop() =
+        listeningSocket.Shutdown(SocketShutdown.Both)
+        listeningSocket.Close()
+        clients.Clear()
+
 
     ///Sends the specified message to the client.
     member s.Send(clientEndPoint, msg, ?close) =

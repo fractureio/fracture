@@ -19,8 +19,8 @@ type HttpServer(headers, body) as this =
 
         createParser.Execute( new ArraySegment<_>(data) )|> ignore))
         
-    member h.Listen(port) =     
-        svr.Listen(port = port)
+    member h.Start(port) =     
+        svr.Start(port = port)
 
     member h.Send(client, (response:string), close) = 
         let encoded = System.Text.Encoding.ASCII.GetBytes(response)
