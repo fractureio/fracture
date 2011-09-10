@@ -10,7 +10,7 @@ open SocketExtensions
 open Common
 open Threading
 
-///Creates a new TcpServer using the specified parameters
+/// Creates a new TcpServer using the specified parameters
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent) as s=
     let connected = defaultArg connected (fun ep -> Debug.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
     let disconnected = defaultArg disconnected (fun ep -> Debug.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
@@ -21,19 +21,20 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     let mutable disposed = false
         
-    //ensures the listening socket is shutdown on disposal.
-    let cleanUp(socket) = 
-        if not disposed && socket <> null then
+    /// Ensures the listening socket is shutdown on disposal.
+    let cleanUp disposing socket = 
+        if not disposed then
+            if disposing && socket <> null then
+                disposeSocket socket
+                (pool :> IDisposable).Dispose()
             disposed <- true
-            disposeSocket socket
-            (pool :> IDisposable).Dispose()
 
     let disconnect (sd:SocketDescriptor) =
         !-- connections
         disconnected sd.RemoteEndPoint
         sd.Socket.Close()
 
-    ///This function is called on each connect,sends,receive, and disconnect
+    /// This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
@@ -50,28 +51,28 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let acceptSocket = args.AcceptSocket
         match args.SocketError with
         | SocketError.Success ->
-            //start next accept
+            // start next accept
             let saea = pool.CheckOut()
             do listeningSocket.AcceptAsyncSafe(completed, saea)
 
-            //process newly connected client
+            // process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
             clients.AddOrUpdate(endPoint, acceptSocket, fun a b -> (acceptSocket)) |> ignore
-            //if not success then failwith "client could not be added"
+            ////if not success then failwith "client could not be added"
 
-            //trigger connected
+            // trigger connected
             connected endPoint
             !++ connections
             args.AcceptSocket <- null (*remove the AcceptSocket because we're reusing args*)
 
             let sd = {Socket = acceptSocket; RemoteEndPoint = endPoint}
 
-            //start receive on accepted client
+            // start receive on accepted client
             let receiveSaea = pool.CheckOut()
             receiveSaea.UserToken <- sd
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
 
-            //check if data was given on connection
+            // check if data was given on connection
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
@@ -89,17 +90,17 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let sd = args.UserToken :?> SocketDescriptor
         let socket = sd.Socket
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
-            //process received data, check if data was given on connection.
+            // process received data, check if data was given on connection.
             let data = acquireData args
-            //trigger received
+            // trigger received
             received (data, s, sd )
-            //get on with the next receive
+            // get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()
                 saea.UserToken <- sd
                 socket.ReceiveAsyncSafe( completed, saea)
             else ()
-        //0 byte receive - disconnect.
+        // 0 byte receive - disconnect.
         else disconnect sd
 
     and processSend (args) =
@@ -121,13 +122,13 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     member s.Connections 
         with get () = connections
 
-    ///Starts the accepting a incoming connections.
+    /// Starts the accepting a incoming connections.
     member s.Start(?address, ?port) =
         let address = defaultArg address IPAddress.Loopback
         let port = defaultArg port 80
-        //initialise the pool
+        // initialise the pool
         pool.Start(completed)
-        ///starts listening on the specified address and port.
+        // starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
         listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
@@ -137,8 +138,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         listeningSocket.Close()
         clients.Clear()
 
-
-    ///Sends the specified message to the client.
+    /// Sends the specified message to the client.
     member s.Send(clientEndPoint, msg, ?close) =
         let success, client = clients.TryGetValue(clientEndPoint)
         let close = defaultArg close true
@@ -147,4 +147,6 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         else failwith "could not find client %"
         
     interface IDisposable with 
-        member s.Dispose() = cleanUp listeningSocket
+        member s.Dispose() =
+            cleanUp true listeningSocket
+            GC.SuppressFinalize(s)
