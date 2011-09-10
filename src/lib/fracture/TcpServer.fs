@@ -93,7 +93,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             // process received data, check if data was given on connection.
             let data = acquireData args
             // trigger received
-            received (data, s, sd )
+            received (data, s, sd)
             // get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()

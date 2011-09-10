@@ -34,24 +34,11 @@
   </PropertyGroup>
   <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
-    <None Include="packages.config" />
     <Compile Include="Hex.fs" />
-    <Compile Include="Primitives.fs" />
-    <Compile Include="CharParsers.fs" />
-    <Compile Include="Uri.fs" />
-    <Compile Include="Http.fs" />
     <Compile Include="HttpMachineTemp.fs" />
     <Compile Include="HttpServer.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FParsec">
-      <HintPath>..\..\..\packages\FParsec.0.9.1\lib\net40\FParsec.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FParsecCS">
-      <HintPath>..\..\..\packages\FParsec.0.9.1\lib\net40\FParsecCS.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="HttpMachine">
       <HintPath>..\..\..\packages\httpmachine.0.9.0.0\HttpMachine.dll</HintPath>
     </Reference>

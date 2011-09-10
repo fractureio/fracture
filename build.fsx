@@ -25,7 +25,6 @@ let nugetDir = "./nuget/"
 let targetPlatformDir = getTargetPlatformDir "4.0.30319"
 let nugetLibDir = nugetDir @@ "lib"
 let nugetDocsDir = nugetDir @@ "docs"
-let fparsecVersion = GetPackageVersion packagesDir "FParsec"
 let fsharpMonadVersion = GetPackageVersion packagesDir "FSharp.Monad"
 
 // params
@@ -120,9 +119,7 @@ Target "BuildNuGet" (fun _ ->
     [ buildDir + "Fracture.dll"
       buildDir + "Fracture.pdb"
       buildDir + "Fracture.Http.dll"
-      buildDir + "Fracture.Http.pdb"
-      buildDir + "FParsecCS.dll"
-      buildDir + "FParsec.dll" ]
+      buildDir + "Fracture.Http.pdb" ]
         |> CopyTo nugetLibDir
 
     NuGet (fun p -> 
@@ -132,7 +129,7 @@ Target "BuildNuGet" (fun _ ->
             Description = projectDescription
             Version = version
             OutputPath = nugetDir
-            Dependencies = ["FParsec",RequireExactly fparsecVersion;"FSharp.Monad",RequireExactly fsharpMonadVersion]
+            Dependencies = ["FSharp.Monad",RequireExactly fsharpMonadVersion]
             AccessKey = nugetKey
             ToolPath = nugetPath
             Publish = nugetKey <> "" })

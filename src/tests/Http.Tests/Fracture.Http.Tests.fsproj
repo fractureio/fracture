@@ -34,21 +34,8 @@
   <ItemGroup>
     <None Include="packages.config" />
     <Compile Include="HexTest.fs" />
-    <Compile Include="PrimitivesTest.fs" />
-    <Compile Include="CharParsersTest.fs" />
-    <Compile Include="UriTest.fs" />
-    <Compile Include="HttpTestRequests.fs" />
-    <Compile Include="HttpTest.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FParsec">
-      <HintPath>..\..\..\packages\FParsec.0.9.1\lib\net40\FParsec.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FParsecCS">
-      <HintPath>..\..\..\packages\FParsec.0.9.1\lib\net40\FParsecCS.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="FsUnit.NUnit-0.9.0">
       <HintPath>..\..\..\packages\FsUnit.0.9.1\Lib\FsUnit.NUnit-0.9.0.dll</HintPath>
       <Private>True</Private>
