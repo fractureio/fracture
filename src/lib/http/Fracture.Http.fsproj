@@ -37,8 +37,13 @@
     <Compile Include="Hex.fs" />
     <Compile Include="HttpMachineTemp.fs" />
     <Compile Include="HttpServer.fs" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FSharpx">
+      <HintPath>..\..\..\packages\FSharpx.1.2.1.110910\lib\FSharpx.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="HttpMachine">
       <HintPath>..\..\..\packages\httpmachine.0.9.0.0\HttpMachine.dll</HintPath>
     </Reference>
@@ -50,8 +55,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\fracture\Fracture.fsproj">
       <Name>Fracture</Name>
       <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
