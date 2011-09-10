@@ -25,7 +25,7 @@ let nugetDir = "./nuget/"
 let targetPlatformDir = getTargetPlatformDir "4.0.30319"
 let nugetLibDir = nugetDir @@ "lib"
 let nugetDocsDir = nugetDir @@ "docs"
-let fsharpMonadVersion = GetPackageVersion packagesDir "FSharp.Monad"
+let fsharpxVersion = GetPackageVersion packagesDir "FSharpx"
 
 // params
 let target = getBuildParamOrDefault "target" "All"
@@ -129,7 +129,7 @@ Target "BuildNuGet" (fun _ ->
             Description = projectDescription
             Version = version
             OutputPath = nugetDir
-            Dependencies = ["FSharp.Monad",RequireExactly fsharpMonadVersion]
+            Dependencies = ["FSharpx",RequireExactly fsharpxVersion]
             AccessKey = nugetKey
             ToolPath = nugetPath
             Publish = nugetKey <> "" })

@@ -46,8 +46,8 @@
     <Compile Include="RemoteAgent.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FSharp.Monad">
-      <HintPath>..\..\..\packages\FSharp.Monad.1.1.3.20110707\lib\FSharp.Monad.dll</HintPath>
+    <Reference Include="FSharpx">
+      <HintPath>..\..\..\packages\FSharpx.1.2.1.110910\lib\FSharpx.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
