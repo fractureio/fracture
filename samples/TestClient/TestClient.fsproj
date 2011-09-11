@@ -5,14 +5,14 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{d63f1b3c-17eb-4a3b-873a-c07499e7375d}</ProjectGuid>
+    <ProjectGuid>{1452ef4f-c72f-4678-9716-e5358bb2659a}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>ConsoleServerTest</RootNamespace>
-    <AssemblyName>ConsoleServerTest</AssemblyName>
+    <RootNamespace>TestClient</RootNamespace>
+    <AssemblyName>TestClient</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
-    <Name>TestServer</Name>
-    <FscToolPath>..\..\..\lib\FSharp\v4.0\bin\</FscToolPath>
+    <Name>TestClient</Name>
+    <FscToolPath>..\..\lib\FSharp\v4.0\bin\</FscToolPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -31,25 +31,22 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
   </PropertyGroup>
-  <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
-  <ItemGroup>
-    <Compile Include="Program.fs" />
-  </ItemGroup>
+  <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
-      <HintPath>..\..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
+      <HintPath>..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <ProjectReference Include="..\..\lib\fracture\Fracture.fsproj">
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="testclient.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\fracture\Fracture.fsproj">
       <Name>Fracture</Name>
       <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\lib\http\Fracture.Http.fsproj">
-      <Name>Fracture.Http</Name>
-      <Project>{13571762-e1c9-492a-9141-37aa0094759a}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

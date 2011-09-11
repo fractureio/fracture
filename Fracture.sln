@@ -5,19 +5,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{F2F2
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{2A2CCEB1-E63A-4DDF-8B6F-4DFA04AC181F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PipeletsDemo", "src\samples\PipeletsDemo\PipeletsDemo.fsproj", "{A703F411-C739-4FB8-A411-7CF30F327223}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "PipeletsDemo", "samples\PipeletsDemo\PipeletsDemo.fsproj", "{A703F411-C739-4FB8-A411-7CF30F327223}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestServer", "src\samples\TestServer\TestServer.fsproj", "{D63F1B3C-17EB-4A3B-873A-C07499E7375D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestServer", "samples\TestServer\TestServer.fsproj", "{D63F1B3C-17EB-4A3B-873A-C07499E7375D}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestClient", "src\samples\TestClient\TestClient.fsproj", "{1452EF4F-C72F-4678-9716-E5358BB2659A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "TestClient", "samples\TestClient\TestClient.fsproj", "{1452EF4F-C72F-4678-9716-E5358BB2659A}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture", "src\lib\fracture\Fracture.fsproj", "{020697D7-24A3-4CE4-A326-D2C7C204FFDE}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture", "src\fracture\Fracture.fsproj", "{020697D7-24A3-4CE4-A326-D2C7C204FFDE}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture.Tests", "src\tests\Fracture.Tests\Fracture.Tests.fsproj", "{43B4FEB8-E0EF-4510-81B9-314059D2473B}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture.Tests", "tests\Fracture.Tests\Fracture.Tests.fsproj", "{43B4FEB8-E0EF-4510-81B9-314059D2473B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture.Http", "src\lib\http\Fracture.Http.fsproj", "{13571762-E1C9-492A-9141-37AA0094759A}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture.Http", "src\http\Fracture.Http.fsproj", "{13571762-E1C9-492A-9141-37AA0094759A}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture.Http.Tests", "src\tests\Http.Tests\Fracture.Http.Tests.fsproj", "{D208FDA3-0198-478F-8596-A91ADEDB76C6}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Fracture.Http.Tests", "tests\Http.Tests\Fracture.Http.Tests.fsproj", "{D208FDA3-0198-478F-8596-A91ADEDB76C6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{04847EAA-343D-4C73-9C06-664F0DF5C9C6}"
 	ProjectSection(SolutionItems) = preProject

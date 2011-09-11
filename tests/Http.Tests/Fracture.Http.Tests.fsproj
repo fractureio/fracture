@@ -5,14 +5,13 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</ProjectGuid>
+    <ProjectGuid>{d208fda3-0198-478f-8596-a91adedb76c6}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Fracture</RootNamespace>
-    <AssemblyName>Fracture</AssemblyName>
+    <RootNamespace>Fracture.Http.Tests</RootNamespace>
+    <AssemblyName>Fracture.Http.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>Fracture</Name>
-    <FscToolPath>..\..\..\lib\FSharp\v4.0\bin\</FscToolPath>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <Name>Fracture.Http.Tests</Name>
+    <FscToolPath>..\..\lib\FSharp\v4.0\bin\</FscToolPath>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -20,44 +19,46 @@
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
     <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG</DefineConstants>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <OtherFlags />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
     <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE;callbacks</DefineConstants>
+    <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\Fracture.XML</DocumentationFile>
   </PropertyGroup>
-  <Import Project="..\..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
+  <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <None Include="packages.config" />
-    <Compile Include="Pipelets.fs" />
-    <Compile Include="SocketExtensions.fs" />
-    <Compile Include="BocketPool.fs" />
-    <Compile Include="Common.fs" />
-    <Compile Include="Threading.fs" />
-    <Compile Include="TcpClient.fs" />
-    <Compile Include="TcpServer.fs" />
-    <Compile Include="RemoteAgent.fs" />
+    <Compile Include="HexTest.fs" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FSharpx">
-      <HintPath>..\..\..\packages\FSharpx.1.2.1.110910\lib\FSharpx.dll</HintPath>
+    <Reference Include="FsUnit.NUnit-0.9.0">
+      <HintPath>..\..\packages\FsUnit.0.9.1\Lib\FsUnit.NUnit-0.9.0.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
-      <HintPath>..\..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
+      <HintPath>..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="nunit.framework">
+      <HintPath>..\..\packages\NUnit.2.5.9.10348\lib\nunit.framework.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
-    <Reference Include="System.Web.ApplicationServices" />
-    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\http\Fracture.Http.fsproj">
+      <Name>Fracture.Http</Name>
+      <Project>{13571762-e1c9-492a-9141-37aa0094759a}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.

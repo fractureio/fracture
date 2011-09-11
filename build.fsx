@@ -37,11 +37,11 @@ let nunitPath = "./packages/NUnit.2.5.9.10348/Tools"
 
 // files
 let appReferences =
-    !+ "./src/lib/**/*.fsproj"
+    !+ "./src/**/*.fsproj"
         |> Scan
 
 let testReferences =
-    !+ "./src/tests/**/*.fsproj"
+    !+ "./tests/**/*.fsproj"
       |> Scan
 
 let filesToZip =
@@ -62,7 +62,7 @@ Target "BuildApp" (fun _ ->
             AssemblyTitle = projectSummary
             AssemblyDescription = projectDescription
             Guid = "020697d7-24a3-4ce4-a326-d2c7c204ffde"
-            OutputFileName = "./src/lib/fracture/AssemblyInfo.fs" })
+            OutputFileName = "./src/fracture/AssemblyInfo.fs" })
 
     AssemblyInfo (fun p ->
         {p with 
@@ -71,7 +71,7 @@ Target "BuildApp" (fun _ ->
             AssemblyTitle = "Fracture.Http"
             AssemblyDescription = "An HTTP and URI parser combinator library."
             Guid = "13571762-E1C9-492A-9141-37AA0094759A"
-            OutputFileName = "./src/lib/http/AssemblyInfo.fs" })
+            OutputFileName = "./src/http/AssemblyInfo.fs" })
 
     MSBuildRelease buildDir "Build" appReferences
         |> Log "AppBuild-Output: "
