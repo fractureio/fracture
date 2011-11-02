@@ -22,10 +22,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let mutable disposed = false
         
     /// Ensures the listening socket is shutdown on disposal.
-    let cleanUp disposing socket = 
+    let cleanUp disposing = 
         if not disposed then
-            if disposing && socket <> null then
-                disposeSocket socket
+            if disposing then
+                if  listeningSocket <> null then
+                    disposeSocket listeningSocket
                 (pool :> IDisposable).Dispose()
             disposed <- true
 
@@ -146,7 +147,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut perOperationBufferSize msg close
         else failwith "could not find client %"
         
+    member s.Dispose() = (s :> IDisposable).Dispose()
+
+    override s.Finalize() = cleanUp false
+        
     interface IDisposable with 
         member s.Dispose() =
-            cleanUp true listeningSocket
+            cleanUp true
             GC.SuppressFinalize(s)

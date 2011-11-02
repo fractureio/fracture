@@ -9,14 +9,16 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
     let buffer = Array.zeroCreate<byte> totalsize
     let pool = new BlockingCollection<SocketAsyncEventArgs>(maxPoolCount:int)
     let mutable disposed = false
-    let cleanUp() = 
+
+    let cleanUp disposing = 
         if not disposed then
+            if disposing then
+                pool.CompleteAdding()
+                while pool.Count > 1 do
+                    pool.Take()
+                        .Dispose()
+                pool.Dispose()
             disposed <- true
-            pool.CompleteAdding()
-            while pool.Count > 1 do
-                pool.Take()
-                    .Dispose()
-            pool.Dispose()
 
     let checkedOperation operation onFailure =
         try 
@@ -55,5 +57,11 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
     member this.Count =
         pool.Count
 
+    member this.Dispose = (this :> IDisposable).Dispose()
+
+    override this.Finalize() = cleanUp false
+
     interface IDisposable with
-        member this.Dispose() = cleanUp()
+        member this.Dispose() =
+            cleanUp true
+            GC.SuppressFinalize(this)

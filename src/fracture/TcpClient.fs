@@ -18,11 +18,12 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let mutable disposed = false
         
     //ensures the listening socket is shutdown on disposal.
-    let cleanUp() = 
+    let cleanUp disposing = 
         if not disposed then
+            if disposing then
+                disposeSocket listeningSocket
+                (pool :> IDisposable).Dispose()
             disposed <- true
-            disposeSocket listeningSocket
-            (pool :> IDisposable).Dispose()
 
     let connectedEvent = new Event<_>()
     let disconnectedEvent = new Event<_>()
@@ -115,10 +116,14 @@ type TcpClient(ipEndPoint, poolSize, size) =
         listeningSocket.ConnectAsyncSafe(completed, saea)
 
     ///Used to close the current listening socket.
-    member this.Close() = cleanUp()
+    member this.Dispose() = (this :> IDisposable).Dispose()
+
+    override this.Finalize() = cleanUp false
         
     interface IDisposable with
-        member this.Dispose() = cleanUp()
+        member this.Dispose() =
+            cleanUp true
+            GC.SuppressFinalize(this)
         
     ///Creates a new TcpClient that uses a system assigned local endpoint that has 50 receive/sent Bockets and 4096 bytes backing storage for each.
     new() = new TcpClient(new IPEndPoint(IPAddress.Any, 0), 50, 4096)
