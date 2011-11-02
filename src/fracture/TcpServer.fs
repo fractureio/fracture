@@ -25,7 +25,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let cleanUp disposing = 
         if not disposed then
             if disposing then
-                if  listeningSocket <> null then
+                if listeningSocket <> null then
                     disposeSocket listeningSocket
                 (pool :> IDisposable).Dispose()
             disposed <- true
@@ -36,7 +36,8 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         sd.Socket.Close()
 
     /// This function is called on each connect,sends,receive, and disconnect
-    let rec completed (args:SocketAsyncEventArgs) =
+    let rec completed (args: SocketAsyncEventArgs) =
+        let args = args :?> AsyncSocketEventArgs
         try
             match args.LastOperation with
             | SocketAsyncOperation.Accept -> processAccept args
@@ -54,11 +55,12 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         | SocketError.Success ->
             // start next accept
             let nextArgs = pool.CheckOut()
-            do listeningSocket.AcceptAsyncSafe(completed, nextArgs)
+            do listeningSocket.AcceptAsync(nextArgs)
 
             // process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
-            clients.AddOrUpdate(endPoint, acceptSocket, fun a b -> (acceptSocket)) |> ignore
+            // TODO: The lambda below appears incomplete. If a and b are not intended to be used, use _ _.
+            clients.AddOrUpdate(endPoint, acceptSocket, fun a b -> acceptSocket) |> ignore
             ////if not success then failwith "client could not be added"
 
             // trigger connected
@@ -69,9 +71,9 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             let sd = {Socket = acceptSocket; RemoteEndPoint = endPoint}
 
             // start receive on accepted client
-            let receiveSaea = pool.CheckOut()
-            receiveSaea.UserToken <- sd
-            acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
+            let receiveArgs = pool.CheckOut()
+            receiveArgs.UserToken <- sd
+            acceptSocket.ReceiveAsync(receiveArgs)
 
             // check if data was given on connection
             if args.BytesTransferred > 0 then
@@ -99,7 +101,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if socket.Connected then 
                 let nextArgs = pool.CheckOut()
                 nextArgs.UserToken <- sd
-                socket.ReceiveAsyncSafe(completed, nextArgs)
+                socket.ReceiveAsync(nextArgs)
             else ()
         // 0 byte receive - disconnect.
         else disconnect sd
@@ -132,7 +134,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         // starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
-        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+        listeningSocket.AcceptAsync(pool.CheckOut())
 
     member s.Stop() =
         listeningSocket.Shutdown(SocketShutdown.Both)
@@ -144,9 +146,9 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let success, client = clients.TryGetValue(clientEndPoint)
         let close = defaultArg close true
         if success then 
-            send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut perOperationBufferSize msg close
+            send {Socket = client;RemoteEndPoint = clientEndPoint} pool.CheckOut perOperationBufferSize msg close
         else failwith "could not find client %"
-        
+
     member s.Dispose() = (s :> IDisposable).Dispose()
 
     override s.Finalize() = cleanUp false
