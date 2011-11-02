@@ -14,7 +14,7 @@ open Threading
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent) as s=
     let connected = defaultArg connected (fun ep -> Debug.WriteLine(sprintf "%A %A: Connected" DateTime.UtcNow.TimeOfDay ep))
     let disconnected = defaultArg disconnected (fun ep -> Debug.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
-    let sent = defaultArg sent (fun (received:byte[], ep) -> Debug.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
+    let sent = defaultArg sent (fun (received: byte[], ep) -> Debug.WriteLine(sprintf "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
@@ -39,22 +39,22 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let rec completed (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
-            | SocketAsyncOperation.Accept -> processAccept(args)
-            | SocketAsyncOperation.Receive -> processReceive(args)
-            | SocketAsyncOperation.Send -> processSend(args)
-            | SocketAsyncOperation.Disconnect -> processDisconnect(args)
-            | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
+            | SocketAsyncOperation.Accept -> processAccept args
+            | SocketAsyncOperation.Receive -> processReceive args
+            | SocketAsyncOperation.Send -> processSend args
+            | SocketAsyncOperation.Disconnect -> processDisconnect args
+            | _ -> args.LastOperation |> failwith "Unknown operation: %a"
         finally
             args.UserToken <- null
             pool.CheckIn(args)
 
-    and processAccept (args) =
+    and processAccept args =
         let acceptSocket = args.AcceptSocket
         match args.SocketError with
         | SocketError.Success ->
             // start next accept
-            let saea = pool.CheckOut()
-            do listeningSocket.AcceptAsyncSafe(completed, saea)
+            let nextArgs = pool.CheckOut()
+            do listeningSocket.AcceptAsyncSafe(completed, nextArgs)
 
             // process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
@@ -83,11 +83,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
         | _ -> Debug.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
          
-    and processDisconnect (args) =
+    and processDisconnect args =
         let sd = args.UserToken :?> SocketDescriptor
         sd |> disconnect
 
-    and processReceive (args) =
+    and processReceive args =
         let sd = args.UserToken :?> SocketDescriptor
         let socket = sd.Socket
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
@@ -97,14 +97,14 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             received (data, s, sd)
             // get on with the next receive
             if socket.Connected then 
-                let saea = pool.CheckOut()
-                saea.UserToken <- sd
-                socket.ReceiveAsyncSafe( completed, saea)
+                let nextArgs = pool.CheckOut()
+                nextArgs.UserToken <- sd
+                socket.ReceiveAsyncSafe(completed, nextArgs)
             else ()
         // 0 byte receive - disconnect.
         else disconnect sd
 
-    and processSend (args) =
+    and processSend args =
         let sd = args.UserToken :?> SocketDescriptor
         match args.SocketError with
         | SocketError.Success ->

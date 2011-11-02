@@ -35,16 +35,16 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let rec completed (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
-            | SocketAsyncOperation.Connect -> processConnect(args)
-            | SocketAsyncOperation.Receive -> processReceive(args)
-            | SocketAsyncOperation.Send -> processSend(args)
+            | SocketAsyncOperation.Connect -> processConnect args
+            | SocketAsyncOperation.Receive -> processReceive args
+            | SocketAsyncOperation.Send -> processSend args
             //TODO: add disconnect
             | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
         finally
             args.UserToken <- null
             pool.CheckIn(args)
 
-    and processConnect (args:SocketAsyncEventArgs) =
+    and processConnect args =
         if args.SocketError = SocketError.Success then
             serverEndPoint <- listeningSocket.RemoteEndPoint :?> IPEndPoint
             //trigger connected
@@ -59,25 +59,25 @@ type TcpClient(ipEndPoint, poolSize, size) =
             //    (data, listeningSocket.RemoteEndPoint :?> IPEndPoint) |> receivedEvent.Trigger
                 
             //start receive on accepted client
-            let saea = pool.CheckOut()
-            args.ConnectSocket.ReceiveAsyncSafe(completed, saea)
+            let nextArgs = pool.CheckOut()
+            args.ConnectSocket.ReceiveAsyncSafe(completed, nextArgs)
         else args.SocketError.ToString() |> printfn "socket error on accept: %s"
 
-    and processReceive (args:SocketAsyncEventArgs) =
+    and processReceive args =
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
             (data, serverEndPoint) |> receivedEvent.Trigger
             //get on with the next receive
-            let saea = pool.CheckOut()
-            listeningSocket.ReceiveAsyncSafe (completed,  saea)
+            let nextArgs = pool.CheckOut()
+            listeningSocket.ReceiveAsyncSafe (completed,  nextArgs)
         else
             //Something went wrong or the server stopped sending bytes.
             serverEndPoint |> disconnectedEvent.Trigger 
             closeConnection listeningSocket
 
-    and processSend (args:SocketAsyncEventArgs) =
+    and processSend args =
         let sock = args.UserToken :?> Socket
         match args.SocketError with
         | SocketError.Success ->
@@ -108,12 +108,12 @@ type TcpClient(ipEndPoint, poolSize, size) =
     ///Starts connecting with remote server
     member this.Start(ipEndPoint) = 
         pool.Start(completed)
-        let saea = pool.CheckOut()
+        let args = pool.CheckOut()
         //TODO: look into why a minimum of 1 byte has to be set for
         // a connect to be successful (288 is specified on msdn)
-        saea.SetBuffer(saea.Offset, 288)
-        saea.RemoteEndPoint <- ipEndPoint
-        listeningSocket.ConnectAsyncSafe(completed, saea)
+        args.SetBuffer(args.Offset, 288)
+        args.RemoteEndPoint <- ipEndPoint
+        listeningSocket.ConnectAsyncSafe(completed, args)
 
     ///Used to close the current listening socket.
     member this.Dispose() = (this :> IDisposable).Dispose()

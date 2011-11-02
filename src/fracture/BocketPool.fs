@@ -1,4 +1,5 @@
 ﻿namespace Fracture
+
 open System
 open System.Net.Sockets
 open System.Collections.Generic
@@ -31,31 +32,28 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.Start(callback) =
         for n in 0 .. maxPoolCount - 1 do
-            let saea = new SocketAsyncEventArgs()
-            saea.Completed |> Observable.add callback
-            saea.SetBuffer(buffer, n*perBocketBufferSize, perBocketBufferSize)
-            this.CheckIn(saea)
+            let args = new SocketAsyncEventArgs()
+            args.Completed |> Observable.add callback
+            args.SetBuffer(buffer, n*perBocketBufferSize, perBocketBufferSize)
+            this.CheckIn(args)
 
     member this.CheckOut() =
-        if disposed then
-            raiseDisposed()
-        else
+        if not disposed then
             checkedOperation pool.Take raiseDisposed
+        else raiseDisposed()
 
-    member this.CheckIn(saea) =
-        if disposed then
-            // the pool is kicked, dispose of it ourselves.
-            saea.Dispose()
-        else 
+    member this.CheckIn(args) =
+        if not disposed then
             // ensure the the full range of the buffer is available this may have changed
             // if the bocket was previously used for a send or connect operation.
-            if saea.Count < perBocketBufferSize then 
-                saea.SetBuffer(saea.Offset, perBocketBufferSize)
+            if args.Count < perBocketBufferSize then 
+                args.SetBuffer(args.Offset, perBocketBufferSize)
             // we might be trying to update the the pool when it's already been disposed. 
-            checkedOperation (fun () -> pool.Add(saea)) saea.Dispose
+            checkedOperation (fun () -> pool.Add(args)) args.Dispose
+        // the pool is kicked, dispose of it ourselves.
+        else args.Dispose()
             
-    member this.Count =
-        pool.Count
+    member this.Count = pool.Count
 
     member this.Dispose = (this :> IDisposable).Dispose()
 
