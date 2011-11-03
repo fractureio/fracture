@@ -59,9 +59,8 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
             // process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
-            // TODO: The lambda below appears incomplete. If a and b are not intended to be used, use _ _.
-            clients.AddOrUpdate(endPoint, acceptSocket, fun a b -> acceptSocket) |> ignore
-            ////if not success then failwith "client could not be added"
+            clients.AddOrUpdate(endPoint, acceptSocket, fun _ _ -> acceptSocket) |> ignore
+            //if not success then failwith "client could not be added"
 
             // trigger connected
             connected endPoint

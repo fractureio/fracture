@@ -15,12 +15,13 @@ type Message<'a, 'b> =
     | Attach of 'b IPipeletInput
     | Detach of 'b IPipeletInput
 
-/// A pipelet is a named, write-only agent that processes incoming messages
-/// then publishes the results to the next pipeline stage(s).
-type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IPipeletInput seq -> unit, maxcount, maxwait:int) = 
+/// A pipelet is a named, write-only agent that processes incoming messages then publishes the results to the next pipeline stage(s).
+type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IPipeletInput seq -> unit, maxcount, maxwait:int, ?overflow, ?errors) = 
 
     let disposed = ref false
     let ss = new SemaphoreSlim(maxcount, maxcount)
+    let overflow = defaultArg overflow (fun x -> printf "%A Overflow: %A" DateTime.Now.TimeOfDay x)
+    let errors = defaultArg errors (fun (e:Exception) -> printf "%A Processing error: %A" DateTime.Now.TimeOfDay e.Message)
 
     let dispose disposing =
         if not !disposed then
@@ -37,10 +38,8 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
                     data |> transform |> router <| routes
                     return! loop routes
                 with //force loop resume on error
-                | ex -> 
-                    // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
-                    printf "%A Error: %A" DateTime.Now.TimeOfDay ex.Message
-                    return! loop routes
+                | ex -> errors ex
+                        return! loop routes
             | Attach(stage) -> return! loop (stage::routes)
             | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
         }
@@ -49,8 +48,7 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
     let post data =
         if ss.Wait(maxwait) then
             mailbox.Post(Payload data)
-        // TODO: Allow exceptional occurrences to be returned via other mechanisms than just printing to the console.
-        else printf "%A Overflow: %A" DateTime.Now.TimeOfDay data //overflow
+        else overflow data
 
     /// Gets the name of the pipelet.
     member this.Name with get() = name

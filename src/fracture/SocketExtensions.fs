@@ -16,10 +16,8 @@ type AsyncSocketEventArgs(callback: SocketAsyncEventArgs -> unit) as x =
             base.Dispose()
             disposed <- true
     member x.CallbackSync() = callback x
-    /// Call Close when using AsyncSocketEventArgs and not Dispose,
-    /// or cast to IDisposable to use the explicit implementation.
-    /// This is necessary as the dispose method is sealed on the
-    /// SocketAsyncEventArgs
+    /// Call Close when using AsyncSocketEventArgs not Dispose, or cast to IDisposable to use the
+    /// explicit implementation.  This is necessary as the dispose method is sealed on the SocketAsyncEventArgs
     member x.Close() =
         x.Dispose(true)
     override x.Finalize() =
