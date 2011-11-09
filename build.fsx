@@ -25,7 +25,7 @@ let nugetDir = "./nuget/"
 let targetPlatformDir = getTargetPlatformDir "4.0.30319"
 let nugetLibDir = nugetDir @@ "lib"
 let nugetDocsDir = nugetDir @@ "docs"
-let fsharpxVersion = GetPackageVersion packagesDir "FSharpx"
+let fsharpxVersion = GetPackageVersion packagesDir "FSharpx.Core"
 
 // params
 let target = getBuildParamOrDefault "target" "All"
@@ -129,7 +129,7 @@ Target "BuildNuGet" (fun _ ->
             Description = projectDescription
             Version = version
             OutputPath = nugetDir
-            Dependencies = ["FSharpx",RequireExactly fsharpxVersion]
+            Dependencies = ["FSharpx.Core",RequireExactly fsharpxVersion]
             AccessKey = nugetKey
             ToolPath = nugetPath
             Publish = nugetKey <> "" })
