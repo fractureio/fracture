@@ -27,7 +27,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if disposing then
                 if listeningSocket <> null then
                     disposeSocket listeningSocket
-                (pool :> IDisposable).Dispose()
+                pool.Dispose()
             disposed := true
 
     let disconnect (sd:SocketDescriptor) =
