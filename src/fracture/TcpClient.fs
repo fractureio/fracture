@@ -15,15 +15,15 @@ type TcpClient(ipEndPoint, poolSize, size) =
     ///Creates a Socket as loopback using specified IPEndPoint.
     let listeningSocket = createSocket(ipEndPoint)
     let pool = new BocketPool("regularpool", poolSize, size)
-    let mutable disposed = false
+    let disposed = ref false
         
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
-        if not disposed then
+        if not !disposed then
             if disposing then
                 disposeSocket listeningSocket
                 (pool :> IDisposable).Dispose()
-            disposed <- true
+            disposed := true
 
     let connectedEvent = new Event<_>()
     let disconnectedEvent = new Event<_>()
