@@ -37,7 +37,6 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
     /// This function is called on each connect,sends,receive, and disconnect
     let rec completed (args: SocketAsyncEventArgs) =
-        let args = args :?> AsyncSocketEventArgs
         try
             match args.LastOperation with
             | SocketAsyncOperation.Accept -> processAccept args
@@ -55,7 +54,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         | SocketError.Success ->
             // start next accept
             let nextArgs = pool.CheckOut()
-            do listeningSocket.AcceptAsync(nextArgs)
+            do listeningSocket.AcceptAsyncSafe(completed, nextArgs)
 
             // process newly connected client
             let endPoint = acceptSocket.RemoteEndPoint :?> IPEndPoint
@@ -72,7 +71,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             // start receive on accepted client
             let receiveArgs = pool.CheckOut()
             receiveArgs.UserToken <- sd
-            acceptSocket.ReceiveAsync(receiveArgs)
+            acceptSocket.ReceiveAsyncSafe(completed, receiveArgs)
 
             // check if data was given on connection
             if args.BytesTransferred > 0 then
@@ -100,7 +99,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if socket.Connected then 
                 let nextArgs = pool.CheckOut()
                 nextArgs.UserToken <- sd
-                socket.ReceiveAsync(nextArgs)
+                socket.ReceiveAsyncSafe(completed, nextArgs)
             else ()
         // 0 byte receive - disconnect.
         else disconnect sd
@@ -133,7 +132,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         // starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
-        listeningSocket.AcceptAsync(pool.CheckOut())
+        listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
 
     member s.Stop() =
         listeningSocket.Shutdown(SocketShutdown.Both)
@@ -145,9 +144,9 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let success, client = clients.TryGetValue(clientEndPoint)
         let close = defaultArg close true
         if success then 
-            send {Socket = client;RemoteEndPoint = clientEndPoint} pool.CheckOut perOperationBufferSize msg close
+            send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut perOperationBufferSize msg close
         else failwith "could not find client %"
-
+        
     member s.Dispose() = (s :> IDisposable).Dispose()
 
     override s.Finalize() = cleanUp false

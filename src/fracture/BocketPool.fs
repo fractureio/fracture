@@ -4,12 +4,11 @@ open System
 open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
-open SocketExtensions
 
 type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
     let totalsize = (maxPoolCount * perBocketBufferSize)
     let buffer = Array.zeroCreate<byte> totalsize
-    let pool = new BlockingCollection<AsyncSocketEventArgs>(maxPoolCount:int)
+    let pool = new BlockingCollection<SocketAsyncEventArgs>(maxPoolCount:int)
     let mutable disposed = false
 
     let cleanUp disposing = 
@@ -33,7 +32,8 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.Start(callback) =
         for n in 0 .. maxPoolCount - 1 do
-            let args = new AsyncSocketEventArgs(callback)
+            let args = new SocketAsyncEventArgs()
+            args.Completed |> Observable.add callback
             args.SetBuffer(buffer, n*perBocketBufferSize, perBocketBufferSize)
             this.CheckIn(args)
 
@@ -49,13 +49,13 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
             if args.Count < perBocketBufferSize then 
                 args.SetBuffer(args.Offset, perBocketBufferSize)
             // we might be trying to update the the pool when it's already been disposed. 
-            checkedOperation (fun () -> pool.Add(args)) args.Close
+            checkedOperation (fun () -> pool.Add(args)) args.Dispose
         // the pool is kicked, dispose of it ourselves.
-        else args.Close()
-
+        else args.Dispose()
+            
     member this.Count = pool.Count
 
-    member this.Dispose() = (this :> IDisposable).Dispose()
+    member this.Dispose = (this :> IDisposable).Dispose()
 
     override this.Finalize() = cleanUp false
 

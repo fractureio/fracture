@@ -21,8 +21,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let cleanUp disposing = 
         if not disposed then
             if disposing then
-                if listeningSocket <> null then
-                    disposeSocket listeningSocket
+                disposeSocket listeningSocket
                 (pool :> IDisposable).Dispose()
             disposed <- true
 
@@ -33,9 +32,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     let mutable serverEndPoint = Unchecked.defaultof<IPEndPoint>
         
     ///This function is called on each async operation.
-    let rec completed (args: SocketAsyncEventArgs) =
-        // Since we control creation of the pool, this is a reliable operation.
-        let args = args :?> AsyncSocketEventArgs
+    let rec completed (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
             | SocketAsyncOperation.Connect -> processConnect args
@@ -63,7 +60,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
                 
             //start receive on accepted client
             let nextArgs = pool.CheckOut()
-            args.ConnectSocket.ReceiveAsync(nextArgs)
+            args.ConnectSocket.ReceiveAsyncSafe(completed, nextArgs)
         else args.SocketError.ToString() |> printfn "socket error on accept: %s"
 
     and processReceive args =
@@ -74,7 +71,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
             (data, serverEndPoint) |> receivedEvent.Trigger
             //get on with the next receive
             let nextArgs = pool.CheckOut()
-            listeningSocket.ReceiveAsync(nextArgs)
+            listeningSocket.ReceiveAsyncSafe (completed,  nextArgs)
         else
             //Something went wrong or the server stopped sending bytes.
             serverEndPoint |> disconnectedEvent.Trigger 
@@ -105,7 +102,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
     ///Sends the specified message to the client.
     member this.Send(msg:byte[], (close:bool)) =
         if listeningSocket.Connected then
-            send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint} pool.CheckOut size msg close
+            send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint}  completed  pool.CheckOut  size msg close
         else listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger
         
     ///Starts connecting with remote server
@@ -116,7 +113,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         // a connect to be successful (288 is specified on msdn)
         args.SetBuffer(args.Offset, 288)
         args.RemoteEndPoint <- ipEndPoint
-        listeningSocket.ConnectAsync(args)
+        listeningSocket.ConnectAsyncSafe(completed, args)
 
     ///Used to close the current listening socket.
     member this.Dispose() = (this :> IDisposable).Dispose()
