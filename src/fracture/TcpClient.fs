@@ -22,7 +22,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
         if not !disposed then
             if disposing then
                 disposeSocket listeningSocket
-                (pool :> IDisposable).Dispose()
+                pool.Dispose()
             disposed := true
 
     let connectedEvent = new Event<_>()
