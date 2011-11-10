@@ -1,4 +1,5 @@
 ﻿module Fracture.SocketExtensions
+#nowarn "40"
 
 open System
 open System.Net
@@ -9,14 +10,31 @@ open System.Net.Sockets
 let inline private invoke(asyncMethod, callback, args: SocketAsyncEventArgs) =
     if not (asyncMethod args) then callback args
 
+let inline private invokeAsync(asyncMethod, args: SocketAsyncEventArgs) =
+    Async.FromContinuations <| fun (cont,econt,ccont) ->
+        let rec finish cont value =
+            remover.Dispose()
+            cont value
+        and remover : IDisposable =
+            args.Completed.Subscribe
+                ({ new IObserver<_> with
+                    member x.OnNext(v) = finish cont v
+                    member x.OnError(e) = finish econt e
+                    member x.OnCompleted() =
+                        let msg = "Cancelling the workflow, because the Observable awaited using AwaitObservable has completed."
+                        finish ccont (new System.OperationCanceledException(msg)) })
+        if not (asyncMethod args) then
+            finish cont args
+
 type Socket with 
-    member s.AcceptAsyncSafe(callback, args) =
-        invoke(s.AcceptAsync, callback, args) 
-    member s.ReceiveAsyncSafe(callback, args) =
-        invoke(s.ReceiveAsync, callback, args) 
-    member s.SendAsyncSafe(callback, args) =
-        invoke(s.SendAsync, callback, args) 
-    member s.ConnectAsyncSafe(callback, args) =
-        invoke(s.ConnectAsync, callback, args)
-    member s.DisconnectAsyncSafe(callback, args) =
-        invoke(s.DisconnectAsync, callback, args)
+    member s.AcceptAsyncSafe(callback, args) = invoke(s.AcceptAsync, callback, args) 
+    member s.ReceiveAsyncSafe(callback, args) = invoke(s.ReceiveAsync, callback, args) 
+    member s.SendAsyncSafe(callback, args) = invoke(s.SendAsync, callback, args) 
+    member s.ConnectAsyncSafe(callback, args) = invoke(s.ConnectAsync, callback, args)
+    member s.DisconnectAsyncSafe(callback, args) = invoke(s.DisconnectAsync, callback, args)
+
+    member s.AsyncAccept(args) = invokeAsync(s.AcceptAsync, args)
+    member s.AsyncReceive(args) = invokeAsync(s.ReceiveAsync, args)
+    member s.AsyncSend(args) = invokeAsync(s.SendAsync, args)
+    member s.AsyncConnect(args) = invokeAsync(s.ConnectAsync, args)
+    member s.AsyncDisconnect(args) = invokeAsync(s.DisconnectAsync, args)
