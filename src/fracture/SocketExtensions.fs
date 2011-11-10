@@ -4,6 +4,7 @@
 open System
 open System.Net
 open System.Net.Sockets
+open FSharpx
 
 /// Helper method to make Async calls easier.  InvokeAsyncMethod ensures the callback always
 /// gets called even if an error occurs or the Async method completes synchronously.
@@ -13,11 +14,11 @@ let inline private invoke(asyncMethod, callback, args: SocketAsyncEventArgs) =
 exception SocketIssue of SocketError
     with override this.ToString() = string this.Data0
 
-let inline private invokeAsync(asyncMethod, args: SocketAsyncEventArgs) =
+let inline private invokeAsync asyncMethod (args: SocketAsyncEventArgs) f =
     Async.FromContinuations <| fun (cont,econt,ccont) ->
         let k (args: SocketAsyncEventArgs) =
             match args.SocketError with
-            | SocketError.Success -> cont args
+            | SocketError.Success -> cont <| f args
             | e -> econt <| SocketIssue e
         let rec finish cont value =
             remover.Dispose()
@@ -40,8 +41,8 @@ type Socket with
     member s.ConnectAsyncSafe(callback, args) = invoke(s.ConnectAsync, callback, args)
     member s.DisconnectAsyncSafe(callback, args) = invoke(s.DisconnectAsync, callback, args)
 
-    member s.AsyncAccept(args) = invokeAsync(s.AcceptAsync, args)
-    member s.AsyncReceive(args) = invokeAsync(s.ReceiveAsync, args)
-    member s.AsyncSend(args) = invokeAsync(s.SendAsync, args)
-    member s.AsyncConnect(args) = invokeAsync(s.ConnectAsync, args)
-    member s.AsyncDisconnect(args) = invokeAsync(s.DisconnectAsync, args)
+    member s.AsyncAccept(args) = invokeAsync s.AcceptAsync args <| fun args -> args.AcceptSocket
+    member s.AsyncReceive(args) = invokeAsync s.ReceiveAsync args <| fun args -> BS(args.Buffer, args.Offset, args.Count)
+    member s.AsyncSend(args) = invokeAsync s.SendAsync args ignore
+    member s.AsyncConnect(args) = invokeAsync s.ConnectAsync args ignore
+    member s.AsyncDisconnect(args) = invokeAsync s.DisconnectAsync args ignore
