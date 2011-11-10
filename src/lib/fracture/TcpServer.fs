@@ -16,7 +16,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let disconnected = defaultArg disconnected (fun ep -> Debug.WriteLine(sprintf "%A %A: Disconnected" DateTime.UtcNow.TimeOfDay ep))
     let sent = defaultArg sent (fun (received:byte[], ep) -> Debug.WriteLine( sprintf  "%A Sent: %A " DateTime.UtcNow.TimeOfDay received.Length ))
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
-    let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, 288)(*288 bytes is the minimum size for a connection*)
+    let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, perOperationBufferSize)(*288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
@@ -28,6 +28,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             disposed <- true
             disposeSocket socket
             (pool :> IDisposable).Dispose()
+            (connectionPool :> IDisposable).Dispose()
 
     let disconnect (sd:SocketDescriptor) =
         !-- connections
@@ -45,14 +46,16 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
         finally
             args.UserToken <- null
-            pool.CheckIn(args)
+            match args.LastOperation with
+            | SocketAsyncOperation.Accept -> connectionPool.CheckIn(args)
+            | _ -> pool.CheckIn(args)
 
     and processAccept (args) =
         let acceptSocket = args.AcceptSocket
         match args.SocketError with
         | SocketError.Success ->
             //start next accept
-            let saea = pool.CheckOut()
+            let saea = connectionPool.CheckOut()
             do listeningSocket.AcceptAsyncSafe(completed, saea)
 
             //process newly connected client
@@ -117,7 +120,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
     static member Create(received, ?connected, ?disconnected, ?sent) =
-        new TcpServer(5000, 1024, 2000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+        new TcpServer(10000, 1024, 10000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
     member s.Connections = connections
 
@@ -127,11 +130,12 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let port = defaultArg port 80
         //initialise the pool
         pool.Start(completed)
+        connectionPool.Start(completed)
         ///starts listening on the specified address and port.
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
-        for i in 1 .. 4 do
-            listeningSocket.AcceptAsyncSafe(completed, pool.CheckOut())
+        for i in 1 .. 1000 do
+            listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
 
     ///Sends the specified message to the client.
     member s.Send(clientEndPoint, msg, ?close) =
