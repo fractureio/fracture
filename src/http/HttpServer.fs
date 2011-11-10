@@ -10,7 +10,7 @@ open System.Diagnostics
 open System.Collections.Concurrent
 
 type HttpServer(headers, body) as this = 
-    let mutable disposed = false
+    let disposed = ref false
 
     let svr = TcpServer.Create((fun (data,svr,sd) -> 
         let parser =
@@ -20,13 +20,12 @@ type HttpServer(headers, body) as this =
 
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
-        if not disposed then
+        if not !disposed then
             if disposing && svr <> Unchecked.defaultof<TcpServer> then
                 (svr :> IDisposable).Dispose()
-            disposed <- true
+            disposed := true
         
-    member h.Start(port) =     
-        svr.Start(port = port)
+    member h.Start(port) = svr.Listen(port = port)
 
     member h.Send(client, (response:string), close) = 
         let encoded = System.Text.Encoding.ASCII.GetBytes(response)

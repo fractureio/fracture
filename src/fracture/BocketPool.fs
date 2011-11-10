@@ -62,7 +62,7 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
             
     member this.Count = pool.Count
 
-    member this.Dispose = (this :> IDisposable).Dispose()
+    member this.Dispose() = (this :> IDisposable).Dispose()
 
     override this.Finalize() = cleanUp false
 
