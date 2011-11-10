@@ -10,21 +10,28 @@ open System.Net.Sockets
 let inline private invoke(asyncMethod, callback, args: SocketAsyncEventArgs) =
     if not (asyncMethod args) then callback args
 
+exception SocketIssue of SocketError
+    with override this.ToString() = string this.Data0
+
 let inline private invokeAsync(asyncMethod, args: SocketAsyncEventArgs) =
     Async.FromContinuations <| fun (cont,econt,ccont) ->
+        let k (args: SocketAsyncEventArgs) =
+            match args.SocketError with
+            | SocketError.Success -> cont args
+            | e -> econt <| SocketIssue e
         let rec finish cont value =
             remover.Dispose()
             cont value
         and remover : IDisposable =
             args.Completed.Subscribe
                 ({ new IObserver<_> with
-                    member x.OnNext(v) = finish cont v
+                    member x.OnNext(v) = finish k v
                     member x.OnError(e) = finish econt e
                     member x.OnCompleted() =
                         let msg = "Cancelling the workflow, because the Observable awaited using AwaitObservable has completed."
                         finish ccont (new System.OperationCanceledException(msg)) })
         if not (asyncMethod args) then
-            finish cont args
+            finish k args
 
 type Socket with 
     member s.AcceptAsyncSafe(callback, args) = invoke(s.AcceptAsync, callback, args) 
