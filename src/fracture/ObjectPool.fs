@@ -9,7 +9,6 @@ type Agent<'a> = MailboxProcessor<'a>
 type PoolMessage<'a> =
     | Get of AsyncReplyChannel<'a>
     | Put of 'a
-    | Count of AsyncReplyChannel<int>
     | Clear
 // [/snippet]
 
@@ -34,13 +33,11 @@ type ObjectPool<'a>(initialPoolCount, generate: unit -> 'a, ?cleanUp, ?autoGrow)
             match msg with
             | Get(reply)   -> return! popAndContinue(stack, reply)
             | Put(x)       -> return! pushAndContinue(x, stack)
-            | Count(reply) -> return! countAndContinue(stack, reply)
             | Clear        -> return! clearAndContinue(stack) }
         and emptyStack(stack: Stack<_>) =
             inbox.Scan(fun msg ->
                 match msg with
                 | Put(x)       -> Some(pushAndContinue(x, stack))
-                | Count(reply) -> Some(countAndContinue(stack, reply))
                 | Clear        -> Some(clearAndContinue(stack))
                 | _ -> None)
         and popAndContinue(stack: Stack<_>, reply) =
@@ -55,9 +52,6 @@ type ObjectPool<'a>(initialPoolCount, generate: unit -> 'a, ?cleanUp, ?autoGrow)
             Seq.iter cleanUp stack
             stack.Clear()
             emptyStack(stack)
-        and countAndContinue(stack: Stack<_>, reply) =
-            reply.Reply(count)
-            chooseState(stack)
         and chooseState(stack: Stack<_>) =
             if count = 0 then
                 if autoGrow then
@@ -112,6 +106,12 @@ of both `Count` and `Clear` messages. The `Clear` method uses the `cleanUp` para
     let stackCount = stack.Count
     let poolCount = pool.Count
 
+    // Get one item.
+    let stackItem = ref null
+    stack.TryPop(stackItem)
+    !stackItem
+    let poolItem = pool.Get()
+
     // Compare `BlockingCollection` with `ObjectPool`.
     let collection = new System.Collections.Concurrent.BlockingCollection<obj>(100000)
     for _ in 1..100000 do collection.Add(generate())
@@ -124,12 +124,6 @@ of both `Count` and `Clear` messages. The `Clear` method uses the `cleanUp` para
     // Put the items back.
     for x in collectionItems do collection.Add(x)
     for x in boundedPoolItems do boundedPool.Put(x)
-
-    // Get one item.
-    let stackItem = ref null
-    stack.TryPop(stackItem)
-    !stackItem
-    let poolItem = pool.Get()
 
     // Check the counts.
     let collectionCount = collection.Count
