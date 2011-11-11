@@ -21,10 +21,11 @@ type ObjectPool<'a>(initialPoolCount, generate: unit -> 'a, ?cleanUp, ?autoGrow)
     let cleanUp = defaultArg cleanUp ignore
 
     let agent = Agent.Start(fun inbox ->
-        let stack = new Stack<_>(initialPoolCount)
+        let stack = new Stack<_>(capacity = initialPoolCount)
         let rec initialize() =
-            for _ in 0 .. initialPoolCount - 1 do
-                stack.Push(generate())
+            if initialPoolCount > 0 then
+                for _ in 0 .. initialPoolCount - 1 do
+                    stack.Push(generate())
             count <- initialPoolCount
             chooseState()
         and loop() = async {
