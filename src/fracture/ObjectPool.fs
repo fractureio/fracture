@@ -1,49 +1,75 @@
 ﻿namespace Fracture
 
-/// Agent alias for MailboxProcessor
+open System.Collections.Generic
+
 type Agent<'a> = MailboxProcessor<'a>
 
+// [snippet: ObjectPool messages]
 /// One of three messages for our Object Pool agent
 type PoolMessage<'a> =
     | Get of AsyncReplyChannel<'a>
-    | Count of AsyncReplyChannel<int>
     | Put of 'a
-    | Clear of AsyncReplyChannel<'a list>
+    | Count of AsyncReplyChannel<int>
+    | Clear
+// [/snippet]
 
+// [snippet: ObjectPool]
 /// Object pool representing a reusable pool of objects
-type ObjectPool<'a>(generate: unit -> 'a, initialPoolCount, autoGrow) = 
-    let initial = [ for x in 1..initialPoolCount do yield generate() ]
+type ObjectPool<'a>(initialPoolCount, generate: unit -> 'a, ?cleanUp, ?autoGrow) = 
+    [<VolatileField>]
+    let mutable count = 0
+    let autoGrow = defaultArg autoGrow false
+    let cleanUp = defaultArg cleanUp ignore
+
     let agent = Agent.Start(fun inbox ->
-        let rec loop xs = async {
+        let rec initialize() =
+            let stack =
+                if initialPoolCount > 1 then
+                    new Stack<_>([| for _ in 0 .. initialPoolCount - 1 -> generate() |])
+                else new Stack<_>()
+            count <- stack.Count
+            chooseState stack
+        and loop(stack: Stack<_>) = async {
             let! msg = inbox.Receive()
             match msg with
-            | Get(reply) -> 
-                let res = match xs with
-                          | hd::tl -> reply.Reply hd; tl
-                          | [] as empty ->
-                              // TODO: Create a state machine that checks the autoGrow argument and blocks additional access if it's full.
-                              //if autoGrow then
-                              reply.Reply (generate())
-                              empty
-                return! loop res
-            | Count(reply) ->
-                reply.Reply xs.Length
-                return! loop xs
-            | Put(x)-> 
-                return! loop (x::xs) 
-            | Clear(reply) -> 
-                reply.Reply xs
-                return! loop List.empty<'a> }
-        loop initial)
+            | Get(reply)   -> return! popAndContinue(stack, reply)
+            | Put(x)       -> return! pushAndContinue(x, stack)
+            | Count(reply) -> return! countAndContinue(stack, reply)
+            | Clear        -> return! clearAndContinue(stack) }
+        and emptyStack(stack: Stack<_>) =
+            inbox.Scan(fun msg ->
+                match msg with
+                | Put(x)       -> Some(pushAndContinue(x, stack))
+                | Count(reply) -> Some(countAndContinue(stack, reply))
+                | Clear        -> Some(clearAndContinue(stack))
+                | _ -> None)
+        and popAndContinue(stack: Stack<_>, reply) =
+            reply.Reply(stack.Pop())
+            count <- count - 1
+            chooseState(stack)
+        and pushAndContinue(x, stack: Stack<_>) =
+            stack.Push(x)
+            count <- count + 1
+            chooseState(stack)
+        and clearAndContinue(stack: Stack<_>) =
+            Seq.iter cleanUp stack
+            stack.Clear()
+            emptyStack(stack)
+        and countAndContinue(stack: Stack<_>, reply) =
+            reply.Reply(count)
+            chooseState(stack)
+        and chooseState(stack: Stack<_>) =
+            if count = 0 then
+                if autoGrow then
+                    stack.Push(generate())
+                    loop(stack)
+                else emptyStack(stack)
+            else loop(stack)
+                
+        initialize())
 
-    /// Creates an object pool that remains at a constant size
-    new (generate, count) = ObjectPool<'a>(generate, count, false)
-
-    /// Returns the number of items checked into the pool
-    member this.Count() = agent.PostAndReply(Count)
-
-    /// Returns the number of items checked into the pool
-    member this.AsyncCount() = agent.PostAndAsyncReply(Count)
+    /// Returns the count of items in the pool
+    member this.Count = count
 
     /// Gets an item from the pool or if there are none present use the generator
     member this.Get(item) = agent.PostAndReply(Get)
@@ -55,7 +81,58 @@ type ObjectPool<'a>(generate: unit -> 'a, initialPoolCount, autoGrow) =
     member this.Put(item) = agent.Post(Put item)
 
     /// Clears the object pool, returning all of the data that was in the pool.
-    member this.ToListAndClear() = agent.PostAndReply(Clear)
+    member this.Clear() = agent.Post(Clear)
+// [/snippet]
 
-    /// Clears the object pool, returning all of the data that was in the pool.
-    member this.AsyncToListAndClear() = agent.PostAndAsyncReply(Clear)
+#if INTERACTIVE
+// [snippet: ObjectPool usage examples]
+(*
+`ObjectPool` is intended to be a functional variation on the idea of a `BlockingCollection`. It is a slight variation
+on the `BlockingQueueAgent`, the primary differences being the use of a `Stack` rather than a `Queue` and the availability
+of both `Count` and `Clear` messages. The `Clear` method uses the `cleanUp` parameter to clean up the stack before clearing.
+*)
+    let generate() = obj()
+
+    // Compare `ConcurrentStack` with `ObjectPool`.
+    let stack = System.Collections.Concurrent.ConcurrentStack<_>([| for _ in 1..100000 do yield generate() |])
+    let pool = ObjectPool<_>(100000, generate, autoGrow = true)
+
+    // Get the items.
+    let stackItems = [| for _ in 1..100000 do
+                          let item = ref null
+                          if stack.TryPop(item) then
+                              yield !item |]
+    let poolItems = [| for _ in 1..100000 do yield pool.Get() |]
+
+    // Put the items back.
+    for x in stackItems do stack.Push(x)
+    for x in poolItems do pool.Put(x)
+
+    // Check the counts.
+    let stackCount = stack.Count
+    let poolCount = pool.Count
+
+    // Compare `BlockingCollection` with `ObjectPool`.
+    let collection = new System.Collections.Concurrent.BlockingCollection<obj>(100000)
+    for _ in 1..100000 do collection.Add(generate())
+    let boundedPool = ObjectPool<_>(100000, generate)
+
+    // Get the items.
+    let collectionItems = [| for _ in 1..100000 do yield collection.Take() |]
+    let boundedPoolItems = [| for _ in 1..100000 do yield boundedPool.Get() |]
+
+    // Put the items back.
+    for x in collectionItems do collection.Add(x)
+    for x in boundedPoolItems do boundedPool.Put(x)
+
+    // Get one item.
+    let stackItem = ref null
+    stack.TryPop(stackItem)
+    !stackItem
+    let poolItem = pool.Get()
+
+    // Check the counts.
+    let collectionCount = collection.Count
+    let boundedPoolCount = boundedPool.Count
+// [/snippet]
+#endif
