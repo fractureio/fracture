@@ -21,44 +21,43 @@ type ObjectPool<'a>(initialPoolCount, generate: unit -> 'a, ?cleanUp, ?autoGrow)
     let cleanUp = defaultArg cleanUp ignore
 
     let agent = Agent.Start(fun inbox ->
+        let stack = new Stack<_>(initialPoolCount)
         let rec initialize() =
-            let stack =
-                if initialPoolCount > 1 then
-                    new Stack<_>([| for _ in 0 .. initialPoolCount - 1 -> generate() |])
-                else new Stack<_>()
-            count <- stack.Count
-            chooseState stack
-        and loop(stack: Stack<_>) = async {
+            for _ in 0 .. initialPoolCount - 1 do
+                stack.Push(generate())
+            count <- initialPoolCount
+            chooseState()
+        and loop() = async {
             let! msg = inbox.Receive()
             match msg with
-            | Get(reply)   -> return! popAndContinue(stack, reply)
-            | Put(x)       -> return! pushAndContinue(x, stack)
-            | Clear        -> return! clearAndContinue(stack) }
-        and emptyStack(stack: Stack<_>) =
+            | Get(reply)   -> return! popAndContinue(reply)
+            | Put(x)       -> return! pushAndContinue(x)
+            | Clear        -> return! clearAndContinue() }
+        and emptyStack() =
             inbox.Scan(fun msg ->
                 match msg with
-                | Put(x)       -> Some(pushAndContinue(x, stack))
-                | Clear        -> Some(clearAndContinue(stack))
+                | Put(x)       -> Some(pushAndContinue(x))
+                | Clear        -> Some(clearAndContinue())
                 | _ -> None)
-        and popAndContinue(stack: Stack<_>, reply) =
+        and popAndContinue(reply) =
             reply.Reply(stack.Pop())
             count <- count - 1
-            chooseState(stack)
-        and pushAndContinue(x, stack: Stack<_>) =
+            chooseState()
+        and pushAndContinue(x) =
             stack.Push(x)
             count <- count + 1
-            chooseState(stack)
-        and clearAndContinue(stack: Stack<_>) =
+            chooseState()
+        and clearAndContinue() =
             Seq.iter cleanUp stack
             stack.Clear()
-            emptyStack(stack)
-        and chooseState(stack: Stack<_>) =
+            emptyStack()
+        and chooseState() =
             if count = 0 then
                 if autoGrow then
                     stack.Push(generate())
-                    loop(stack)
-                else emptyStack(stack)
-            else loop(stack)
+                    loop()
+                else emptyStack()
+            else loop()
                 
         initialize())
 
