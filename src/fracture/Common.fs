@@ -28,7 +28,7 @@ let disposeSocket (socket:Socket) =
     socket.Dispose()
 
 /// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
-let send client completed (getArgs: unit -> SocketAsyncEventArgs) bufferLength (msg: byte[]) close = 
+let send client completed (getArgs: unit -> SocketAsyncEventArgs) bufferLength (msg: byte[]) keepAlive = 
     let rec loop offset =
         if offset < msg.Length then
             let args = getArgs()
@@ -39,9 +39,13 @@ let send client completed (getArgs: unit -> SocketAsyncEventArgs) bufferLength (
             if client.Socket.Connected then 
                 client.Socket.SendAsyncSafe(completed, args)
                 loop (offset + amountToSend)
-            else Debug.WriteLine(sprintf "Connection lost to%A" client.RemoteEndPoint)
+            else Console.WriteLine(sprintf "Connection lost to%A" client.RemoteEndPoint)
     loop 0  
-    if close then client.Socket.Close(2)
+    if not keepAlive then 
+        let args = getArgs()
+        args.UserToken <- client
+        client.Socket.Shutdown(SocketShutdown.Both)
+        client.Socket.DisconnectAsyncSafe(completed, args)
     
 let acquireData(args: SocketAsyncEventArgs)= 
     //process received data

@@ -4,6 +4,7 @@ open System
 open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
+open SocketExtensions
 
 type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
     let totalsize = (maxPoolCount * perBocketBufferSize)
@@ -35,6 +36,7 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
         | :? InvalidOperationException -> onFailure()
 
     let raiseDisposed() = raise(ObjectDisposedException(name))
+    let raiseTimeout() = raise(TimeoutException(name))
 
     member this.Start(callback) =
         for n in 0 .. maxPoolCount - 1 do
@@ -46,7 +48,11 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.CheckOut() =
         if not !disposed then
-            checkedOperation pool.Take raiseDisposed
+            let suc,res = pool.TryTakeAsTuple(1000)
+            if suc then 
+                res.Value 
+            else raiseTimeout()
+            //checkedOperation pool.Take raiseDisposed
         else raiseDisposed()
 
     member this.CheckIn(args) =

@@ -39,16 +39,16 @@ type HttpRequest = {RequestHeaders:HttpRequestHeaders; Body:ArraySegment<byte>}
                 this.headerValue <- null
                 headers.Clear()
 
-            member this.OnMethod( parser, m) =
+            member this.OnMethod( parser, m) = 
                 this.method' <- m
 
-            member this.OnRequestUri( parser:HttpParser,  requestUri:string) =
+            member this.OnRequestUri( parser:HttpParser,  requestUri:string) = 
                 this.requestUri <- requestUri
 
-            member this.OnFragment( parser:HttpParser,  fragment:string) =
+            member this.OnFragment( parser:HttpParser,  fragment:string) = 
                 this.fragment <- fragment
 
-            member this.OnQueryString( parser:HttpParser,  queryString:string) =
+            member this.OnQueryString( parser:HttpParser,  queryString:string) = 
                 this.queryString <- queryString
 
             member this.OnHeaderName( parser:HttpParser,  name:string) = 
@@ -64,7 +64,7 @@ type HttpRequest = {RequestHeaders:HttpRequestHeaders; Body:ArraySegment<byte>}
                 this.headerValue <- value
 
             member this.OnHeadersEnd( parser:HttpParser) = 
-                Debug.WriteLine("OnHeadersEnd")
+                //Debug.WriteLine("OnHeadersEnd")
 
                 if not (String.IsNullOrEmpty(this.headerValue)) then
                     commitHeader();
@@ -78,12 +78,12 @@ type HttpRequest = {RequestHeaders:HttpRequestHeaders; Body:ArraySegment<byte>}
                 requestBegan(p.requestHeaders, parser.ShouldKeepAlive);
 
             member this.OnBody(pars:HttpParser, data: ArraySegment<byte>) =
-                Debug.WriteLine("OnBody")
+                //Debug.WriteLine("OnBody")
                 // XXX can we defer this check to the parser?
                 if (data.Count > 0) then
                     p.body <- data
                     requestBody(p.body)
 
             member this.OnMessageEnd( parser:HttpParser) =
-                Debug.WriteLine("OnMessageEnd")
+                //Debug.WriteLine("OnMessageEnd")
                 requestEnded({RequestHeaders= p.requestHeaders; Body= p.body})

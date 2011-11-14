@@ -10,7 +10,8 @@
     <RootNamespace>ConsoleServerTest</RootNamespace>
     <AssemblyName>ConsoleServerTest</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
     <Name>TestServer</Name>
     <FscToolPath>..\..\lib\FSharp\v4.0\bin\</FscToolPath>
   </PropertyGroup>
@@ -52,6 +53,11 @@
       <Project>{13571762-e1c9-492a-9141-37aa0094759a}</Project>
       <Private>True</Private>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
