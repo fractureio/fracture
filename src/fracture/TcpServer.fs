@@ -131,6 +131,8 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         pool.Start(completed)
         connectionPool.Start(completed)
         ///starts listening on the specified address and port.
+        //This disables nagle
+        //listeningSocket.NoDelay <- true 
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
         for i in 1 .. acceptBacklogCount do

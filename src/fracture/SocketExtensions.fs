@@ -46,11 +46,3 @@ type Socket with
     member s.AsyncSend(args) = invokeAsync s.SendAsync args ignore
     member s.AsyncConnect(args) = invokeAsync s.ConnectAsync args ignore
     member s.AsyncDisconnect(args) = invokeAsync s.DisconnectAsync args ignore
-
-open System.Collections.Concurrent
-open Microsoft.FSharp.Core.Operators.Unchecked
-type BlockingCollection<'a> with
-    member s.TryTakeAsTuple( timeout:int)  = 
-        let result = ref defaultof< 'a>
-        let success = s.TryTake(result, timeout)
-        (success, result)

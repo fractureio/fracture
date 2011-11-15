@@ -9,15 +9,15 @@ open SocketExtensions
 type SocketDescriptor = {Socket: Socket; RemoteEndPoint: IPEndPoint}
 
 /// Creates a Socket and binds it to specified IPEndpoint, if you want a sytem assigned one Use IPEndPoint(IPAddress.Any, 0)
-let createSocket (ipEndPoint) =
+let inline createSocket (ipEndPoint) =
     let socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     socket.Bind(ipEndPoint);socket
 
-let closeConnection (socket:Socket) =
+let inline closeConnection (socket:Socket) =
     try socket.Shutdown(SocketShutdown.Both)
     finally socket.Close()
 
-let disposeSocket (socket:Socket) =
+let inline disposeSocket (socket:Socket) =
     try
         socket.Shutdown(SocketShutdown.Both)
         socket.Disconnect(false)
@@ -28,7 +28,7 @@ let disposeSocket (socket:Socket) =
     socket.Dispose()
 
 /// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
-let send client completed (getArgs: unit -> SocketAsyncEventArgs) bufferLength (msg: byte[]) keepAlive = 
+let inline send client completed (getArgs: unit -> SocketAsyncEventArgs) bufferLength (msg: byte[]) keepAlive = 
     let rec loop offset =
         if offset < msg.Length then
             let args = getArgs()
@@ -47,7 +47,7 @@ let send client completed (getArgs: unit -> SocketAsyncEventArgs) bufferLength (
         client.Socket.Shutdown(SocketShutdown.Both)
         client.Socket.DisconnectAsyncSafe(completed, args)
     
-let acquireData(args: SocketAsyncEventArgs)= 
+let inline acquireData(args: SocketAsyncEventArgs)= 
     //process received data
     let data:byte[] = Array.zeroCreate args.BytesTransferred
     Buffer.BlockCopy(args.Buffer, args.Offset, data, 0, data.Length)

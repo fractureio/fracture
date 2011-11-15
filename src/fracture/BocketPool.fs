@@ -5,6 +5,13 @@ open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
 open SocketExtensions
+open Microsoft.FSharp.Core.Operators.Unchecked
+
+module blockingConnection = 
+    let inline tryTakeAsTuple (pool: BlockingCollection<_>) (timeout:int)  = 
+        let result = ref defaultof< 'a>
+        let success = pool.TryTake(result, timeout)
+        (success, result)
 
 type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
     let totalsize = (maxPoolCount * perBocketBufferSize)
@@ -48,7 +55,7 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.CheckOut() =
         if not !disposed then
-            let suc,res = pool.TryTakeAsTuple(1000)
+            let suc,res = blockingConnection.tryTakeAsTuple pool 1000
             if suc then 
                 res.Value 
             else raiseTimeout()
