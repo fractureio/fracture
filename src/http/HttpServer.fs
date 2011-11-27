@@ -9,17 +9,30 @@ open HttpMachine
 open System.Collections.Generic
 open System.Diagnostics
 open System.Collections.Concurrent
+open Fracture.Pipelets
 
 type HttpServer(headers, body, requestEnd) as this = 
     let disposed = ref false
 
-    let svr = TcpServer.Create((fun (data,svr,sd) -> 
-        let parser =
-            let parserDelegate = ParserDelegate(requestBegan =(fun (a,b) -> headers(a,b,this,sd)), 
-                                                requestBody = (fun data -> (body(data, svr,sd))), 
-                                                requestEnded = (fun req -> (requestEnd(req, svr, sd))))
-            HttpParser(parserDelegate)
-        parser.Execute(new ArraySegment<_>(data)) |> ignore))
+    let parser =
+        let parserDelegate = ParserDelegate(requestBegan =(fun (a,b) -> headers(a,b,this)), 
+                                            requestBody = (fun data -> (body(data, svr))), 
+                                            requestEnded = (fun req -> (requestEnd(req, svr))))
+        HttpParser(parserDelegate)
+
+    //hook parser into x form below
+    //parser should notify headers, body, requestEnd, return parser ref so version and keep alive can be found or abstract them inot record type etc
+    let recPipe = new Pipelet<_,_>("", (fun a -> Seq.singleton a), Pipelets.basicRouter, 10000, 2000)
+
+    let svr = TcpServer.Create(recPipe)
+    //TODO feed in the headers, body, requestEnd
+//    (fun (data,svr,sd) -> 
+//        let parser =
+//            let parserDelegate = ParserDelegate(requestBegan =(fun (a,b) -> headers(a,b,this,sd)), 
+//                                                requestBody = (fun data -> (body(data, svr,sd))), 
+//                                                requestEnded = (fun req -> (requestEnd(req, svr, sd))))
+//            HttpParser(parserDelegate)
+//        parser.Execute(new ArraySegment<_>(data)) |> ignore))
 
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
@@ -27,12 +40,14 @@ type HttpServer(headers, body, requestEnd) as this =
             if disposing && svr <> Unchecked.defaultof<TcpServer> then
                 (svr :> IDisposable).Dispose()
             disposed := true
+
+    let ii = svr :> IPipeletInput<_>
         
     member h.Start(port) = svr.Listen(IPAddress.Loopback, port)
 
     member h.Send(client, (response:string), keepAlive) = 
         let encoded = Encoding.ASCII.GetBytes(response)
-        svr.Send(client, encoded, keepAlive)
+        ii.Post(client, encoded, keepAlive)
 
     interface IDisposable with
         member h.Dispose() =

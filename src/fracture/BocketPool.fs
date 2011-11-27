@@ -54,7 +54,7 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.CheckOut() =
         if not !disposed then
-            let suc,res = BocketPool.TryTakeAsTuple pool 1000
+            let suc,res = BocketPool.TryTakeAsTuple pool 10000
             if suc then 
                 res.Value 
             else raiseTimeout()

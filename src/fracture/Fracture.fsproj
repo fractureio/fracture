@@ -44,7 +44,6 @@
     <Compile Include="Threading.fs" />
     <Compile Include="TcpClient.fs" />
     <Compile Include="TcpServer.fs" />
-    <Compile Include="RemoteAgent.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FSharp.AsyncExtensions">
