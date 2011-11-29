@@ -10,19 +10,18 @@ open System.Collections.Generic
 open System.Diagnostics
 open System.Collections.Concurrent
 open Fracture.Pipelets
+open Fracture.Http.Core
 
 type HttpServer(headers, body, requestEnd) as this = 
     let disposed = ref false
-
-    let parser =
-        let parserDelegate = ParserDelegate(requestBegan =(fun (a,b) -> headers(a,b,this)), 
-                                            requestBody = (fun data -> (body(data, svr))), 
-                                            requestEnded = (fun req -> (requestEnd(req, svr))))
-        HttpParser(parserDelegate)
+    //onHeaders, requestBody, requestEnded
+    let x = HttpParser(ParserDelegate(onHeaders =(fun (headers) -> ()), 
+                                      requestBody = (fun data -> ()), 
+                                      requestEnded = (fun req -> ())))
 
     //hook parser into x form below
     //parser should notify headers, body, requestEnd, return parser ref so version and keep alive can be found or abstract them inot record type etc
-    let recPipe = new Pipelet<_,_>("", (fun a -> Seq.singleton a), Pipelets.basicRouter, 10000, 2000)
+    let recPipe = new Pipelet<_,_>("", (fun a -> x.Execute(new ArraySegment<_>(a)) Seq.singleton a), Pipelets.basicRouter, 10000, 2000)
 
     let svr = TcpServer.Create(recPipe)
     //TODO feed in the headers, body, requestEnd
