@@ -14,24 +14,14 @@ open Fracture.Http.Core
 
 type HttpServer(headers, body, requestEnd) as this = 
     let disposed = ref false
-    //onHeaders, requestBody, requestEnded
-    let x = HttpParser(ParserDelegate(onHeaders =(fun (headers) -> ()), 
-                                      requestBody = (fun data -> ()), 
-                                      requestEnded = (fun req -> ())))
 
-    //hook parser into x form below
-    //parser should notify headers, body, requestEnd, return parser ref so version and keep alive can be found or abstract them inot record type etc
-    let recPipe = new Pipelet<_,_>("", (fun a -> x.Execute(new ArraySegment<_>(a)) Seq.singleton a), Pipelets.basicRouter, 10000, 2000)
+    let parser = HttpParser(ParserDelegate(onHeaders =(fun hdr -> headers hdr), 
+                                           requestBody = (fun data -> body data), 
+                                           requestEnded = (fun req -> requestEnd req)))
+
+    let recPipe = new Pipelet<_,_>("Parser", (fun a -> parser.Execute( new ArraySegment<_>(fst a) ) |> ignore ; Seq.empty), Pipelets.basicRouter, 10000, 2000)
 
     let svr = TcpServer.Create(recPipe)
-    //TODO feed in the headers, body, requestEnd
-//    (fun (data,svr,sd) -> 
-//        let parser =
-//            let parserDelegate = ParserDelegate(requestBegan =(fun (a,b) -> headers(a,b,this,sd)), 
-//                                                requestBody = (fun data -> (body(data, svr,sd))), 
-//                                                requestEnded = (fun req -> (requestEnd(req, svr, sd))))
-//            HttpParser(parserDelegate)
-//        parser.Execute(new ArraySegment<_>(data)) |> ignore))
 
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
