@@ -15,9 +15,9 @@ open Fracture.Http.Core
 type HttpServer(headers, body, requestEnd) as this = 
     let disposed = ref false
 
-    let parser = HttpParser(ParserDelegate(onHeaders =(fun hdr -> headers hdr), 
-                                           requestBody = (fun data -> body data), 
-                                           requestEnded = (fun req -> requestEnd req)))
+    let parser = HttpParser(ParserDelegate(onHeaders = headers, 
+                                           requestBody = body, 
+                                           requestEnded = requestEnd ))
 
     let recPipe = new Pipelet<_,_>("Parser", (fun a -> parser.Execute( new ArraySegment<_>(fst a) ) |> ignore ; Seq.empty), Pipelets.basicRouter, 10000, 2000)
 
