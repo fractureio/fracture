@@ -12,7 +12,7 @@ open Threading
 open Fracture.Pipelets
 
 ///Creates a new TcpServer using the specified parameters
-type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent) as s=
+type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent)=
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
     let connectionPool = new BocketPool("connection pool", max (acceptBacklogCount * 2) 2, perOperationBufferSize)(*Note: 288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()

@@ -14,10 +14,8 @@ System.AppDomain.CurrentDomain.UnhandledException |> Observable.add debug
 let shortdate = DateTime.UtcNow.ToShortDateString
 open Fracture.HttpServer
 
-let response = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\nContent-Length: 12\r\nServer: Fracture\r\n\r\nHello world.\r\n\r\n"
-let rec server = new HttpServer(headers = (fun (headers) -> server.Send(null, response, headers.KeepAlive) ), 
-                            body = (fun(body) -> () ), 
-                            requestEnd = fun(req) -> () )
+let data = "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\nConnection: Keep-Alive\r\nContent-Length: 12\r\nServer: Fracture\r\n\r\nHello world.\r\n\r\n"B
+let server = new HttpServer(onRequest = fun (req, res, endPoint) -> res(endPoint, data, req.RequestHeaders.KeepAlive) )
 
 server.Start(6667)
 printfn "Http Server started"
