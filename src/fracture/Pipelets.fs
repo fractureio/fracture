@@ -27,19 +27,25 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
         if not !disposed then
             if disposing then ss.Dispose()
             disposed := true
-        
+    
+    let computeAndRoute data routes = async{data |> transform |> router <| routes}
+
     let mailbox = MailboxProcessor.Start(fun inbox ->
         let rec loop routes = async {
             let! msg = inbox.Receive()
             match msg with
             | Payload(data) ->
                 ss.Release() |> ignore
-                try
-                    data |> transform |> router <| routes
-                    return! loop routes
-                with //force loop resume on error
-                | ex -> errors ex
-                        return! loop routes
+                
+                Async.StartWithContinuations(computeAndRoute data routes, ignore, errors, ignore)
+                      
+//                let result = compute data routes |> Async.Catch |> Async.RunSynchronously
+//                match result with
+//                | Choice1Of2 _ -> ()
+//                | Choice2Of2 exn -> 
+//                    errors exn
+                return! loop routes
+                        
             | Attach(stage) -> return! loop (stage::routes)
             | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
         }

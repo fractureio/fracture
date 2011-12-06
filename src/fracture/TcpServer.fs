@@ -36,17 +36,23 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         if disconnected.IsSome then 
             disconnected.Value endPoint
         socket.Shutdown(SocketShutdown.Both)
-        if socket.Connected then socket.Disconnect(true)
+        if socket.Connected then 
+            try //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
+                socket.Disconnect(false)
+            finally ()
+        disposeSocket socket
 
     ///This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
         try
+            if ExecutionContext.IsFlowSuppressed() then
+                ExecutionContext.RestoreFlow()
             match args.LastOperation with
             | SocketAsyncOperation.Accept -> processAccept(args)
             | SocketAsyncOperation.Receive -> processReceive(args)
             | SocketAsyncOperation.Send -> processSend(args)
             | SocketAsyncOperation.Disconnect -> processDisconnect(args)
-            | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
+            | _ -> Debug.WriteLine (sprintf "Unknown operation: %A" args.SocketError)
         finally
             args.UserToken <- null
             match args.LastOperation with
@@ -61,6 +67,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
             //start next accept
             let saea = connectionPool.CheckOut()
+            //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
             do listeningSocket.AcceptAsyncSafe(completed, saea)
 
             //process newly connected client
@@ -75,6 +82,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             let receiveSaea = pool.CheckOut()
             receiveSaea.AcceptSocket <- acceptSocket
             receiveSaea.UserToken <- endPoint
+            //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
 
             //check if data was given on connection
@@ -103,6 +111,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 let saea = pool.CheckOut()
                 saea.AcceptSocket <- args.AcceptSocket
                 saea.UserToken <- endPoint
+                //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
                 socket.ReceiveAsyncSafe( completed, saea)
         //0 byte receive - disconnect.
         else disconnect (socket, endPoint)
@@ -118,18 +127,21 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 //        | SocketError.NoBufferSpaceAvailable 
 //        | SocketError.IOPending 
 //        | SocketError.WouldBlock -> failwith "%s" <| args.SocketError.ToString()
-        | _ -> failwith "%s" <| args.SocketError.ToString()
+        | _ -> Debug.WriteLine (sprintf "Socket Error: %A" args.SocketError)
 
     let sender = new MailboxProcessor<_>(fun inbox ->
         let rec loop() =
-            async { //printfn "Message count = %d. Waiting for next message." count
-                    let! (clientEndPoint, msg, keepAlive) = inbox.Receive()
-                    
+            async { let! (clientEndPoint, msg, keepAlive) = inbox.Receive()
                     let success, client = clients.TryGetValue(clientEndPoint)
                     if success then 
+                        //wrap exception here with Async.Try? or further down the stack?
+                        //another option is to specify an error callback when using the client
+                        //this way you could pass in a callback and use it to notify out of this
+                        //type.  i.i provive an error callback or event in this type.
+                        //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
                         send client clientEndPoint completed  pool.CheckOut msg keepAlive
-                    else failwith "could not find client %"
-
+                    else 
+                        failwith "could not find client %"
                     return! loop() }
         loop() )
 

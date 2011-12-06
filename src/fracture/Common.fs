@@ -7,15 +7,15 @@ open System.Net.Sockets
 open SocketExtensions
 
 /// Creates a Socket and binds it to specified IPEndpoint, if you want a sytem assigned one Use IPEndPoint(IPAddress.Any, 0)
-let inline createSocket (ipEndPoint) =
+let createSocket (ipEndPoint) =
     let socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     socket.Bind(ipEndPoint);socket
 
-let inline closeConnection (socket:Socket) =
+let closeConnection (socket:Socket) =
     try socket.Shutdown(SocketShutdown.Both)
     finally socket.Close()
 
-let inline disposeSocket (socket:Socket) =
+let disposeSocket (socket:Socket) =
     try
         socket.Shutdown(SocketShutdown.Both)
         socket.Disconnect(false)
@@ -25,8 +25,16 @@ let inline disposeSocket (socket:Socket) =
         :? System.Net.Sockets.SocketException -> ()
     socket.Dispose()
 
+let dodisconnect( getArgs: unit -> SocketAsyncEventArgs, client:Socket, endPoint:EndPoint, completed) = 
+    let args = getArgs()
+    args.UserToken <- endPoint
+    args.AcceptSocket <- client
+    client.Shutdown(SocketShutdown.Both)
+    //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
+    client.DisconnectAsyncSafe(completed, args)
+
 /// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
-let inline send (client:Socket) endPoint completed (getArgs: unit -> SocketAsyncEventArgs) (msg: byte[]) keepAlive = 
+let send (client:Socket) endPoint completed (getArgs: unit -> SocketAsyncEventArgs) (msg: byte[]) keepAlive = 
     let rec loop offset =
         if offset < msg.Length then
             let args = getArgs()
@@ -38,14 +46,12 @@ let inline send (client:Socket) endPoint completed (getArgs: unit -> SocketAsync
             if client.Connected then 
                 client.SendAsyncSafe(completed, args)
                 loop (offset + amountToSend)
-            else Console.WriteLine(sprintf "Connection lost to%A" endPoint)
+            else 
+                //Console.WriteLine(sprintf "Connection lost to%A" endPoint)
+                dodisconnect(getArgs, client, endPoint, completed)       
     loop 0  
     if not keepAlive then 
-        let args = getArgs()
-        args.UserToken <- endPoint
-        args.AcceptSocket <- client
-        client.Shutdown(SocketShutdown.Both)
-        client.DisconnectAsyncSafe(completed, args)
+        dodisconnect(getArgs, client, endPoint, completed)
     
 let inline acquireData(args: SocketAsyncEventArgs)= 
     //process received data
