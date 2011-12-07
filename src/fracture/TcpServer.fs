@@ -20,6 +20,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     let disposed = ref false
     let receivePipe: IPipeletInput<byte[] * EndPoint> = received
+    let errors (ex:Exception) = Console.WriteLine(ex.Message)
        
     /// Ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
@@ -35,24 +36,28 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         !-- connections
         if disconnected.IsSome then 
             disconnected.Value endPoint
-        socket.Shutdown(SocketShutdown.Both)
-        if socket.Connected then 
-            try //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
-                socket.Disconnect(false)
-            finally ()
+//        socket.Shutdown(SocketShutdown.Both)
+//        if socket.Connected then 
+//            try //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
+//                socket.Disconnect(false)
+//            finally ()
+        let remsocket = ref Unchecked.defaultof<Socket>
+        let removed = clients.TryRemove(endPoint, remsocket)
         disposeSocket socket
 
     ///This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
         try
-            if ExecutionContext.IsFlowSuppressed() then
-                ExecutionContext.RestoreFlow()
-            match args.LastOperation with
-            | SocketAsyncOperation.Accept -> processAccept(args)
-            | SocketAsyncOperation.Receive -> processReceive(args)
-            | SocketAsyncOperation.Send -> processSend(args)
-            | SocketAsyncOperation.Disconnect -> processDisconnect(args)
-            | _ -> Debug.WriteLine (sprintf "Unknown operation: %A" args.SocketError)
+            if ExecutionContext.IsFlowSuppressed() then ExecutionContext.RestoreFlow()
+            try
+                match args.LastOperation with
+                | SocketAsyncOperation.Accept -> processAccept(args)
+                | SocketAsyncOperation.Receive -> processReceive(args)
+                | SocketAsyncOperation.Send -> processSend(args)
+                | SocketAsyncOperation.Disconnect -> processDisconnect(args)
+                | _ -> failwith (sprintf "Unknown operation: %A" args.SocketError)
+            with
+            | ex -> errors ex
         finally
             args.UserToken <- null
             match args.LastOperation with
@@ -127,21 +132,29 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 //        | SocketError.NoBufferSpaceAvailable 
 //        | SocketError.IOPending 
 //        | SocketError.WouldBlock -> failwith "%s" <| args.SocketError.ToString()
-        | _ -> Debug.WriteLine (sprintf "Socket Error: %A" args.SocketError)
+        | _ -> errors <| Exception(String.Concat("Socket Error: ", args.SocketError.ToString()))
 
+    let trySend send client clientEndPoint completed checkout msg keepAlive = 
+        async{ send client clientEndPoint completed checkout msg keepAlive}
+    
     let sender = new MailboxProcessor<_>(fun inbox ->
         let rec loop() =
             async { let! (clientEndPoint, msg, keepAlive) = inbox.Receive()
                     let success, client = clients.TryGetValue(clientEndPoint)
-                    if success then 
+                    if success && client.Connected then 
                         //wrap exception here with Async.Try? or further down the stack?
                         //another option is to specify an error callback when using the client
                         //this way you could pass in a callback and use it to notify out of this
                         //type.  i.i provive an error callback or event in this type.
                         //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
-                        send client clientEndPoint completed  pool.CheckOut msg keepAlive
+                        //Async.StartWithContinuations(trySend send client clientEndPoint completed pool.CheckOut msg keepAlive, ignore, errors, ignore)
+                        let result = trySend send client clientEndPoint completed pool.CheckOut msg keepAlive |> Async.Catch |> Async.RunSynchronously
+                        match result with
+                        | Choice1Of2 _ -> ()
+                        | Choice2Of2 ex -> errors ex
+                        //send client clientEndPoint completed  pool.CheckOut msg keepAlive
                     else 
-                        failwith "could not find client %"
+                        errors <| Exception(String.Format("could not find client or disconencted. Endpoint:{0}", clientEndPoint.ToString() ) )
                     return! loop() }
         loop() )
 
@@ -157,7 +170,9 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         pool.Start(completed)
         connectionPool.Start(completed)
         ///starts listening on the specified address and port.
-        //This disables nagle: listeningSocket.NoDelay <- true 
+        //This disables nagle: 
+        listeningSocket.NoDelay <- true 
+        listeningSocket.LingerState <- LingerOption(false, 0)
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
         for i in 1 .. acceptBacklogCount do

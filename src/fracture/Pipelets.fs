@@ -37,13 +37,12 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
             | Payload(data) ->
                 ss.Release() |> ignore
                 
-                Async.StartWithContinuations(computeAndRoute data routes, ignore, errors, ignore)
+                //Async.StartWithContinuations(computeAndRoute data routes, ignore, errors, ignore)
                       
-//                let result = compute data routes |> Async.Catch |> Async.RunSynchronously
-//                match result with
-//                | Choice1Of2 _ -> ()
-//                | Choice2Of2 exn -> 
-//                    errors exn
+                let result = computeAndRoute data routes |> Async.Catch |> Async.RunSynchronously
+                match result with
+                | Choice2Of2 exn -> errors exn
+                | _ -> ()
                 return! loop routes
                         
             | Attach(stage) -> return! loop (stage::routes)

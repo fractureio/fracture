@@ -19,7 +19,7 @@ type HttpServer(onRequest) as this =
         let parser = HttpParser(ParserDelegate(ignore, ignore, requestEnded = fun request -> onRequest (request, response, endPoint)  ))
         parser.Execute( new ArraySegment<_>(data) ) |> ignore
         Seq.empty
-    and svr = TcpServer.Create(new Pipelet<_,_>("Parser", processData, Pipelets.basicRouter, 10000, 2000))
+    and svr = TcpServer.Create(new Pipelet<_,_>("Parser", processData, Pipelets.basicRouter, 100000, 1000))
     and response = (svr :> IPipeletInput<_>).Post
       
     //ensures the listening socket is shutdown on disposal.

@@ -18,40 +18,45 @@ let closeConnection (socket:Socket) =
 let disposeSocket (socket:Socket) =
     try
         socket.Shutdown(SocketShutdown.Both)
-        socket.Disconnect(false)
-        socket.Close()
+        //socket.Disconnect(false)
+        //socket.Close(1)
+        socket.Dispose()
     with
         // note: the calls above can sometimes result in SocketException.
-        :? System.Net.Sockets.SocketException -> ()
-    socket.Dispose()
+        | :? System.Net.Sockets.SocketException -> ()  
+        | :? System.ObjectDisposedException -> 
+            printfn "For fucks sake an obj dispoded exception"
+            failwith "Cack"
 
-let dodisconnect( getArgs: unit -> SocketAsyncEventArgs, client:Socket, endPoint:EndPoint, completed) = 
-    let args = getArgs()
-    args.UserToken <- endPoint
-    args.AcceptSocket <- client
-    client.Shutdown(SocketShutdown.Both)
-    //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
-    client.DisconnectAsyncSafe(completed, args)
+//let dodisconnect( getArgs: unit -> SocketAsyncEventArgs, client:Socket, endPoint:EndPoint, completed) = 
+//    let args = getArgs()
+//    args.UserToken <- endPoint
+//    args.AcceptSocket <- client
+//    client.Shutdown(SocketShutdown.Both)
+//    //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
+//    client.DisconnectAsyncSafe(completed, args)
 
 /// Sends data to the socket cached in the SAEA given, using the SAEA's buffer
 let send (client:Socket) endPoint completed (getArgs: unit -> SocketAsyncEventArgs) (msg: byte[]) keepAlive = 
     let rec loop offset =
-        if offset < msg.Length then
-            let args = getArgs()
-            let amountToSend = min (msg.Length - offset) args.Count
-            args.UserToken <- endPoint
-            args.AcceptSocket <- client
-            Buffer.BlockCopy(msg, offset, args.Buffer, args.Offset, amountToSend)
-            args.SetBuffer(args.Offset, amountToSend)
-            if client.Connected then 
-                client.SendAsyncSafe(completed, args)
-                loop (offset + amountToSend)
-            else 
-                //Console.WriteLine(sprintf "Connection lost to%A" endPoint)
-                dodisconnect(getArgs, client, endPoint, completed)       
+        let args = getArgs()
+        let amountToSend = min (msg.Length - offset) args.Count
+        args.UserToken <- endPoint
+        args.AcceptSocket <- client
+        Buffer.BlockCopy(msg, offset, args.Buffer, args.Offset, amountToSend)
+        args.SetBuffer(args.Offset, amountToSend)
+        if not client.Connected then 
+            //TODO: present partial send pailure due to disconnect?
+            disposeSocket(client)
+
+        client.SendAsyncSafe(completed, args)
+        let newoffset = offset + amountToSend
+        if newoffset < msg.Length then loop (newoffset) 
     loop 0  
-    if not keepAlive then 
-        dodisconnect(getArgs, client, endPoint, completed)
+
+    if not keepAlive then
+        disposeSocket(client) 
+        //dodisconnect(getArgs, client, endPoint, completed)
     
 let inline acquireData(args: SocketAsyncEventArgs)= 
     //process received data
