@@ -14,36 +14,30 @@ open Fracture.Pipelets
 ///Creates a new TcpServer using the specified parameters
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent)=
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
-    let connectionPool = new BocketPool("connection pool", max (acceptBacklogCount * 2) 2, perOperationBufferSize)(*Note: 288 bytes is the minimum size for a connection*)
+    let connectionPool = new BocketPool("connection pool", max (acceptBacklogCount * 2) 2, max perOperationBufferSize 288)(*Note: 288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-    let disposed = ref false
+    let mutable disposed = false
     let receivePipe: IPipeletInput<byte[] * EndPoint> = received
-    let errors (ex:Exception) = Console.WriteLine(ex.Message)
-       
+    let errors (msg:string) = Console.WriteLine(msg)
+
     /// Ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
-        if not !disposed then
+        if not disposed then
             if disposing then
                 if listeningSocket <> null then
-                    disposeSocket listeningSocket
+                    listeningSocket.Close(2)
                 pool.Dispose()
                 connectionPool.Dispose()
-            disposed := true
-
-    let disconnect (socket:Socket, endPoint) =
+            disposed <- true
+    
+    let disconnect ep sock =
         !-- connections
-        if disconnected.IsSome then 
-            disconnected.Value endPoint
-//        socket.Shutdown(SocketShutdown.Both)
-//        if socket.Connected then 
-//            try //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
-//                socket.Disconnect(false)
-//            finally ()
-        let remsocket = ref Unchecked.defaultof<Socket>
-        let removed = clients.TryRemove(endPoint, remsocket)
-        disposeSocket socket
+        discon ep sock (fun ep sock ->         
+            let remsocket = ref Unchecked.defaultof<Socket>
+            clients.TryRemove(ep, remsocket) |> ignore
+            disconnected |> Option.iter (fun callback -> callback(ep) ))
 
     ///This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
@@ -54,10 +48,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 | SocketAsyncOperation.Accept -> processAccept(args)
                 | SocketAsyncOperation.Receive -> processReceive(args)
                 | SocketAsyncOperation.Send -> processSend(args)
-                | SocketAsyncOperation.Disconnect -> processDisconnect(args)
+                | SocketAsyncOperation.Disconnect -> 
+                    processDisconnect(args)
                 | _ -> failwith (sprintf "Unknown operation: %A" args.SocketError)
             with
-            | ex -> errors ex
+            | ex -> errors ex.Message
         finally
             args.UserToken <- null
             match args.LastOperation with
@@ -72,7 +67,6 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
             //start next accept
             let saea = connectionPool.CheckOut()
-            //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
             do listeningSocket.AcceptAsyncSafe(completed, saea)
 
             //process newly connected client
@@ -87,7 +81,6 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             let receiveSaea = pool.CheckOut()
             receiveSaea.AcceptSocket <- acceptSocket
             receiveSaea.UserToken <- endPoint
-            //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
 
             //check if data was given on connection
@@ -97,11 +90,13 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 received.Post(data, endPoint)
         
         | SocketError.OperationAborted
-        | SocketError.Disconnecting when !disposed -> ()// stop accepting here, we're being shutdown.
-        | _ -> Debug.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
+        | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
+        | _ -> errors (sprintf "socket error on accept: %A" args.SocketError)
          
     and processDisconnect (args) =
-        disconnect(args.AcceptSocket, args.UserToken :?> EndPoint)
+        let ep = args.UserToken :?> EndPoint
+        let sock =  args.AcceptSocket
+        disconnect ep sock disconnected
 
     and processReceive (args) =
         let socket = args.AcceptSocket
@@ -116,52 +111,52 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 let saea = pool.CheckOut()
                 saea.AcceptSocket <- args.AcceptSocket
                 saea.UserToken <- endPoint
-                //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
                 socket.ReceiveAsyncSafe( completed, saea)
         //0 byte receive - disconnect.
-        else disconnect (socket, endPoint)
+        else 
+            disconnect endPoint socket disconnected
 
     and processSend (args) =
         let endPoint = args.UserToken :?> EndPoint
         match args.SocketError with
         | SocketError.Success ->
-            let sentData = acquireData args
             //notify data sent
-            sent |> Option.iter (fun x  -> x (sentData, endPoint))
-//        Not shure we can even deal with these, drop through to '_'
-//        | SocketError.NoBufferSpaceAvailable 
-//        | SocketError.IOPending 
-//        | SocketError.WouldBlock -> failwith "%s" <| args.SocketError.ToString()
-        | _ -> errors <| Exception(String.Concat("Socket Error: ", args.SocketError.ToString()))
+            sent |> Option.iter (fun x  -> x (acquireData args, endPoint))
+            //Not shure we can even deal with specific failures, drop through to '_'
+        | _ -> errors <| String.Concat("Socket Error: ", args.SocketError.ToString() )
 
-    let trySend send client clientEndPoint completed checkout msg keepAlive = 
-        async{ send client clientEndPoint completed checkout msg keepAlive}
+    let trySend send client clientEndPoint completed msg keepAlive getSaea disconnected = 
+        async{ send client clientEndPoint completed msg keepAlive getSaea disconnected}
+
+    let trySend2 send client clientEndPoint completed msg keepAlive getSaea disconnected = 
+        try
+            send client clientEndPoint completed msg keepAlive getSaea disconnected
+            Choice1Of2 ()
+        with
+        | ex -> Choice2Of2 ex
     
     let sender = new MailboxProcessor<_>(fun inbox ->
         let rec loop() =
-            async { let! (clientEndPoint, msg, keepAlive) = inbox.Receive()
-                    let success, client = clients.TryGetValue(clientEndPoint)
-                    if success && client.Connected then 
-                        //wrap exception here with Async.Try? or further down the stack?
-                        //another option is to specify an error callback when using the client
-                        //this way you could pass in a callback and use it to notify out of this
-                        //type.  i.i provive an error callback or event in this type.
-                        //TODO: make this code more defensive in that the socket we might be connecting to can be disposed of at any time
-                        //Async.StartWithContinuations(trySend send client clientEndPoint completed pool.CheckOut msg keepAlive, ignore, errors, ignore)
-                        let result = trySend send client clientEndPoint completed pool.CheckOut msg keepAlive |> Async.Catch |> Async.RunSynchronously
-                        match result with
-                        | Choice1Of2 _ -> ()
-                        | Choice2Of2 ex -> errors ex
-                        //send client clientEndPoint completed  pool.CheckOut msg keepAlive
+            async { let! (endPoint, msg, keepAlive) = inbox.Receive()
+                    let foundclient, client = clients.TryGetValue(endPoint)
+                    if foundclient then 
+                        if client.Connected then
+                            let result = trySend2 send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore)
+//                          let result = trySend send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore) |> Async.Catch |> Async.RunSynchronously
+                            match result with
+                            | Choice1Of2 _ -> ()
+                            | Choice2Of2 ex -> errors ex.Message
+                        else errors <| String.Format("Not sending, client:{0} not connected", endPoint.ToString() )
                     else 
-                        errors <| Exception(String.Format("could not find client or disconencted. Endpoint:{0}", clientEndPoint.ToString() ) )
+                        errors <| String.Format("could not find client:{0}", endPoint.ToString() )
                     return! loop() }
         loop() )
 
-    /// PoolSize=10k, Per operation buffer=1k, accept backlog=10000
+    /// PoolSize=50k, Per operation buffer=1k, accept backlog=1000
     static member Create(received, ?connected, ?disconnected, ?sent) =
         new TcpServer(50000, 1024, 10000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
+    member s.Send endPoint data keepAlive = sender.Post(endPoint,data,keepAlive)
     member s.Connections = connections
 
     ///Starts the accepting a incoming connections.
@@ -169,12 +164,13 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         //initialise the pool
         pool.Start(completed)
         connectionPool.Start(completed)
-        ///starts listening on the specified address and port.
-        //This disables nagle: 
-        listeningSocket.NoDelay <- true 
-        listeningSocket.LingerState <- LingerOption(false, 0)
+         
+        listeningSocket.ReceiveBufferSize <- 16384
+        listeningSocket.SendBufferSize <- 16384
+        listeningSocket.NoDelay <- false //This disables nagle on true
+        listeningSocket.LingerState <- LingerOption(true, 2)
         listeningSocket.Bind(IPEndPoint(address, port))
-        listeningSocket.Listen(acceptBacklogCount)
+        listeningSocket.Listen(acceptBacklogCount)///starts listening on the specified address and port.
         for i in 1 .. acceptBacklogCount do
             listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
         sender.Start()
@@ -187,5 +183,4 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             GC.SuppressFinalize(s)
     
     interface IPipeletInput<EndPoint * byte[] * bool> with
-        member s.Post(payload) =
-             sender.Post(payload)
+        member s.Post(payload) = sender.Post(payload)

@@ -32,6 +32,7 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
   </PropertyGroup>
   <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>

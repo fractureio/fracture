@@ -14,13 +14,20 @@ open Fracture.Http.Core
 
 type HttpServer(onRequest) as this = 
     let disposed = ref false
-
+    let parserCache = new ConcurrentDictionary<_,_>()
     let rec processData (data, endPoint)= 
-        let parser = HttpParser(ParserDelegate(ignore, ignore, requestEnded = fun request -> onRequest (request, response, endPoint)  ))
+
+        let createParser() = HttpParser(ParserDelegate(ignore, ignore, requestEnded = fun request -> 
+            onRequest (request, (svr:TcpServer).Send endPoint )  ))
+
+        let parser = parserCache.AddOrUpdate(endPoint, createParser(), (fun key value-> (value))  )
+
         parser.Execute( new ArraySegment<_>(data) ) |> ignore
         Seq.empty
-    and svr = TcpServer.Create(new Pipelet<_,_>("Parser", processData, Pipelets.basicRouter, 100000, 1000))
-    and response = (svr :> IPipeletInput<_>).Post
+    and svr = TcpServer.Create(received = new Pipelet<_,_>("Parser", processData, Routers.basicRouter, 100000, 1000), 
+                               disconnected = fun endpoint -> 
+                                   let (removed, parser) = parserCache.TryRemove(endpoint)
+                                   parser.Execute(new ArraySegment<_>()) |> ignore)
       
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 

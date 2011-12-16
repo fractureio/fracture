@@ -17,10 +17,10 @@ type HttpRequestHeaders =
       KeepAlive: bool
       Headers: IDictionary<string, string> }
     with static member Default =
-            { Method = ""
-              Uri = ""
-              Query = ""
-              Fragment = ""
+            { Method = String.Empty
+              Uri = String.Empty
+              Query = String.Empty
+              Fragment = String.Empty
               Version = Version()
               KeepAlive = false
               Headers = new Dictionary<string, string>() :> IDictionary<string, string> }
@@ -75,12 +75,10 @@ type ParserDelegate(onHeaders, requestBody, requestEnded) as p =
 
         member this.OnHeaderValue(_, value) = 
             if String.IsNullOrEmpty(this.headerName) then
-                failwith "Got header value without name."
+                failwith "Got a header value without name."
             this.headerValue <- value
 
         member this.OnHeadersEnd(parser) = 
-            //Debug.WriteLine("OnHeadersEnd")
-
             if not (String.IsNullOrEmpty(this.headerValue)) then
                 commitHeader()
 
@@ -95,12 +93,10 @@ type ParserDelegate(onHeaders, requestBody, requestEnded) as p =
             onHeaders(p.requestHeaders)
 
         member this.OnBody(_, data) =
-            //Debug.WriteLine("OnBody")
             // XXX can we defer this check to the parser?
             if data.Count > 0 then
                 p.body <- data
                 requestBody(p.body)
 
         member this.OnMessageEnd(_) =
-            //Debug.WriteLine("OnMessageEnd")
             requestEnded({ RequestHeaders = p.requestHeaders; Body = p.body })
