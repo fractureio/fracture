@@ -27,28 +27,60 @@ type Pipelet<'a, 'b>(name:string, transform:'a -> 'b seq, router:'b seq -> 'b IP
         if not disposed then
             if disposing then ss.Dispose()
             disposed <- true
-    
-//    let computeAndRoute data routes = 
-//        try
-//            data |> transform |> router <| routes
-//            Choice1Of2()
-//        with 
-//        | ex -> Choice2Of2 ex
-//
+
 //    let mailbox = MailboxProcessor.Start(fun inbox ->
 //        let rec loop routes = async {
 //            let! msg = inbox.Receive()
 //            match msg with
 //            | Payload(data) ->
 //                ss.Release() |> ignore
-//                match computeAndRoute data routes with
-//                | Choice2Of2 exn -> errors exn
-//                | _ -> ()
+//                try
+//                    data |> transform |> router <| routes
+//                with //force loop resume on error
+//                | ex -> errors ex
 //                return! loop routes
 //            | Attach(stage) -> return! loop (stage::routes)
 //            | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
 //        }
 //        loop [])
+          
+    let computeAndRoute data routes = 
+        try
+            data |> transform |> router <| routes
+            Choice1Of2()
+        with 
+        | ex -> Choice2Of2 ex
+
+    let mailbox = MailboxProcessor.Start(fun inbox ->
+        let rec loop routes = async {
+            let! msg = inbox.Receive()
+            match msg with
+            | Payload(data) ->
+                ss.Release() |> ignore
+                match computeAndRoute data routes with
+                | Choice1Of2 _ -> ()
+                | Choice2Of2 exn -> errors exn
+                return! loop routes
+            | Attach(stage) -> return! loop (stage::routes)
+            | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
+        }
+        loop [])
+
+//    let mailbox = MailboxProcessor.Start(fun inbox ->
+//      let rec loop routes = async {
+//        let! msg = inbox.Receive()
+//        match msg with
+//        | Payload(data) ->
+//          ss.Release() |> ignore
+//          let result = async{data |> transform |> router <| routes} |> Async.Catch |> Async.RunSynchronously
+//          match result with
+//          | Choice1Of2() -> ()
+//          | Choice2Of2 exn -> errors exn
+//          return! loop routes
+//        | Attach(stage) -> return! loop (stage::routes)
+//        | Detach(stage) -> return! loop (List.filter (fun x -> x <> stage) routes)
+//      }
+//      loop [])
 
     interface IPipeletInput<'a> with
         /// Posts a message to the pipelet input.
