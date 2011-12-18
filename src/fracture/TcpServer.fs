@@ -10,16 +10,16 @@ open SocketExtensions
 open Common
 open Threading
 open Fracture.Pipelets
+open System.Threading.Tasks.Dataflow
 
 ///Creates a new TcpServer using the specified parameters
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent)=
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
-    let connectionPool = new BocketPool("connection pool", max (acceptBacklogCount * 2) 2, max perOperationBufferSize 288)(*Note: 288 bytes is the minimum size for a connection*)
+    let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, max perOperationBufferSize 288)(*Note: 288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     let mutable disposed = false
-    let receivePipe: IPipeletInput<byte[] * EndPoint> = received
     let errors (msg:string) = Console.WriteLine(msg)
 
     /// Ensures the listening socket is shutdown on disposal.
@@ -55,19 +55,14 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             | ex -> errors ex.Message
         finally
             args.UserToken <- null
-            match args.LastOperation with
-            | SocketAsyncOperation.Accept -> connectionPool.CheckIn(args)
-            | _ -> pool.CheckIn(args)
+            if not (args.LastOperation = SocketAsyncOperation.Accept) then
+                pool.CheckIn(args)//only check in non accepts
 
     and processAccept (args) =
         match args.SocketError with
         | SocketError.Success ->
             let acceptSocket = args.AcceptSocket
             let endPoint = acceptSocket.RemoteEndPoint
-
-            //start next accept
-            let saea = connectionPool.CheckOut()
-            do listeningSocket.AcceptAsyncSafe(completed, saea)
 
             //process newly connected client
             clients.AddOrUpdate(endPoint, acceptSocket, fun _ _ -> acceptSocket) |> ignore
@@ -87,7 +82,10 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                received.Post(data, endPoint)
+                received(data, endPoint)
+
+            //start next accept
+            do listeningSocket.AcceptAsyncSafe(completed, args)
         
         | SocketError.OperationAborted
         | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
@@ -105,7 +103,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            received.Post(data, endPoint )
+            received(data, endPoint )
             //get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()
@@ -124,39 +122,29 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             sent |> Option.iter (fun x  -> x (acquireData args, endPoint))
             //Not shure we can even deal with specific failures, drop through to '_'
         | _ -> errors <| String.Concat("Socket Error: ", args.SocketError.ToString() )
-
-    let trySend send client clientEndPoint completed msg keepAlive getSaea disconnected = 
-        async{ send client clientEndPoint completed msg keepAlive getSaea disconnected}
-
-    let trySend2 send client clientEndPoint completed msg keepAlive getSaea disconnected = 
-        try
-            send client clientEndPoint completed msg keepAlive getSaea disconnected
-            Choice1Of2 ()
-        with
-        | ex -> Choice2Of2 ex
     
-    let sender = new MailboxProcessor<_>(fun inbox ->
-        let rec loop() =
-            async { let! (endPoint, msg, keepAlive) = inbox.Receive()
-                    let foundclient, client = clients.TryGetValue(endPoint)
-                    if foundclient then 
-                        if client.Connected then
-                            let result = trySend2 send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore)
-//                          let result = trySend send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore) |> Async.Catch |> Async.RunSynchronously
-                            match result with
-                            | Choice1Of2 _ -> ()
-                            | Choice2Of2 ex -> errors ex.Message
-                        else errors <| String.Format("Not sending, client:{0} not connected", endPoint.ToString() )
-                    else 
-                        errors <| String.Format("could not find client:{0}", endPoint.ToString() )
-                    return! loop() }
-        loop() )
+    let sendBuffer = new BufferBlock<(EndPoint * Byte[] * bool)>()
+
+    let sendloop =
+        let rec loop count = async {   
+            let! (endPoint, msg, keepAlive) = Async.AwaitTask(sendBuffer.ReceiveAsync())
+            let foundclient, client = clients.TryGetValue(endPoint)
+            if foundclient then
+                if client.Connected then
+                    try 
+                        send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore)
+                    with
+                    | ex -> errors ex.Message
+                else errors <| String.Format("Not sending, client:{0} not connected", endPoint.ToString() )
+            else 
+                errors <| String.Format("could not find client:{0}", endPoint.ToString() )
+            return! loop (count + 1) }
+        loop 0
 
     /// PoolSize=50k, Per operation buffer=1k, accept backlog=1000
     static member Create(received, ?connected, ?disconnected, ?sent) =
-        new TcpServer(50000, 1024, 10000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
+        new TcpServer(50000, 1024, 1000, received, ?connected = connected, ?disconnected = disconnected, ?sent = sent)
 
-    member s.Send endPoint data keepAlive = sender.Post(endPoint,data,keepAlive)
     member s.Connections = connections
 
     ///Starts the accepting a incoming connections.
@@ -173,14 +161,13 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         listeningSocket.Listen(acceptBacklogCount)///starts listening on the specified address and port.
         for i in 1 .. acceptBacklogCount do
             listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
-        sender.Start()
+        Async.Start sendloop
 
     member s.Dispose() = (s :> IDisposable).Dispose()
-        
+    
+    member s.Send = sendBuffer.Post
+
     interface IDisposable with 
         member s.Dispose() =
             cleanUp true
             GC.SuppressFinalize(s)
-    
-    interface IPipeletInput<EndPoint * byte[] * bool> with
-        member s.Post(payload) = sender.Post(payload)
