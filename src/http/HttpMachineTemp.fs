@@ -29,7 +29,7 @@ type HttpRequest =
     { RequestHeaders: HttpRequestHeaders
       Body: ArraySegment<byte> }
 
-type ParserDelegate(onHeaders, requestBody, requestEnded) as p =
+type ParserDelegate(?onHeaders, ?requestBody, ?requestEnded) as p =
     [<DefaultValue>] val mutable method' : string
     [<DefaultValue>] val mutable requestUri: string
     [<DefaultValue>] val mutable fragment : string
@@ -90,13 +90,13 @@ type ParserDelegate(onHeaders, requestBody, requestEnded) as p =
                                   KeepAlive = parser.ShouldKeepAlive
                                   Headers = headers }
 
-            onHeaders(p.requestHeaders)
+            onHeaders |> Option.iter (fun f -> f p.requestHeaders)
 
         member this.OnBody(_, data) =
             // XXX can we defer this check to the parser?
             if data.Count > 0 then
                 p.body <- data
-                requestBody(p.body)
+                requestBody |> Option.iter (fun f -> f p.body)
 
         member this.OnMessageEnd(_) =
-            requestEnded({ RequestHeaders = p.requestHeaders; Body = p.body })
+            requestEnded |> Option.iter (fun f -> f { RequestHeaders = p.requestHeaders; Body = p.body })

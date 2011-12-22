@@ -13,7 +13,7 @@ open Fracture.Pipelets
 open System.Threading.Tasks.Dataflow
 
 ///Creates a new TcpServer using the specified parameters
-type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent)=
+type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent, ?overflow)=
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
     let connectionPool = new BocketPool("connection pool", max acceptBacklogCount 2, max perOperationBufferSize 288)(*Note: 288 bytes is the minimum size for a connection*)
     let clients = new ConcurrentDictionary<_,_>()
@@ -39,6 +39,12 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             clients.TryRemove(ep, remsocket) |> ignore
             disconnected |> Option.iter (fun callback -> callback(ep) ))
 
+    let receiveBuffer = new BufferBlock<(EndPoint * Byte[])>()
+
+    let propagateReceive endPoint data=
+        if not <| receiveBuffer.Post(endPoint, data) then
+            overflow |> Option.iter  (fun x-> x data)
+
     ///This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
         try
@@ -57,7 +63,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             args.UserToken <- null
             if not (args.LastOperation = SocketAsyncOperation.Accept) then
                 pool.CheckIn(args)//only check in non accepts
-
+    
     and processAccept (args) =
         match args.SocketError with
         | SocketError.Success ->
@@ -82,7 +88,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                received(data, endPoint)
+                propagateReceive endPoint data
 
             //start next accept
             do listeningSocket.AcceptAsyncSafe(completed, args)
@@ -103,7 +109,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            received(data, endPoint )
+            propagateReceive endPoint data
             //get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()
@@ -126,7 +132,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let sendBuffer = new BufferBlock<(EndPoint * Byte[] * bool)>()
 
     let sendloop =
-        let rec loop count = async {   
+        let rec loop() = async {   
             let! (endPoint, msg, keepAlive) = Async.AwaitTask(sendBuffer.ReceiveAsync())
             let foundclient, client = clients.TryGetValue(endPoint)
             if foundclient then
@@ -138,8 +144,15 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 else errors <| String.Format("Not sending, client:{0} not connected", endPoint.ToString() )
             else 
                 errors <| String.Format("could not find client:{0}", endPoint.ToString() )
-            return! loop (count + 1) }
-        loop 0
+            return! loop () }
+        loop()
+
+    let receiveLoop =
+        let rec loop() = async {
+            let! (endPoint, data) = Async.AwaitTask(receiveBuffer.ReceiveAsync())
+            received endPoint data
+            return! loop() }
+        loop()
 
     /// PoolSize=50k, Per operation buffer=1k, accept backlog=1000
     static member Create(received, ?connected, ?disconnected, ?sent) =
@@ -162,10 +175,12 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         for i in 1 .. acceptBacklogCount do
             listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
         Async.Start sendloop
+        Async.Start receiveLoop
 
     member s.Dispose() = (s :> IDisposable).Dispose()
     
-    member s.Send = sendBuffer.Post
+    member s.Send endPoint msg keepAlive = 
+        sendBuffer.Post(endPoint, msg, keepAlive)
 
     interface IDisposable with 
         member s.Dispose() =

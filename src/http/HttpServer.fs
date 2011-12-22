@@ -12,28 +12,22 @@ open System.Collections.Concurrent
 open Fracture.Pipelets
 open Fracture.Http.Core
 
-type FP =
-    static member curry2 (f:_*_ -> _) = 
-        fun a b -> f (a,b)
-    static member curry3 (f:_*_*_ -> _) = 
-        fun a b c -> f (a,b,c)
-
 type HttpServer(onRequest) as this = 
     let disposed = ref false
     let parserCache = new ConcurrentDictionary<_,_>()
-    let rec processData (data, endPoint)= 
-        let myIndianCurry = FP.curry3 (svr:TcpServer).Send 
-        let createParser() = HttpParser(ParserDelegate(ignore, ignore, requestEnded = fun request -> 
-            onRequest (request, myIndianCurry endPoint )  ))
 
-        let parser = parserCache.AddOrUpdate(endPoint, createParser(), (fun key value-> (value))  )
+    let onDisconnect endPoint = 
+        parserCache.TryRemove(endPoint) 
+        |> fun (removed, parser: HttpParser) -> 
+            if removed then parser.Execute(ArraySegment<_>()) |> ignore
 
-        parser.Execute( new ArraySegment<_>(data) ) |> ignore
-    and svr = TcpServer.Create(received = processData, 
-                               disconnected = fun endpoint -> 
-                                   let (removed, parser) = parserCache.TryRemove(endpoint)
-                                   parser.Execute(new ArraySegment<_>()) |> ignore)
-      
+    let rec createParser endPoint = 
+        HttpParser(ParserDelegate(requestEnded = fun req -> onRequest( req, (svr:TcpServer).Send endPoint )))
+    and onReceive endPoint data = 
+        parserCache.AddOrUpdate(endPoint, createParser endPoint, fun key value -> value )
+        |> fun e -> e.Execute( ArraySegment(data) ) |> ignore
+    and svr = TcpServer.Create(received = onReceive, disconnected = onDisconnect)
+    
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
         if not !disposed then
