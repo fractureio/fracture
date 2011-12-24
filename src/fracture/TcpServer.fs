@@ -6,11 +6,12 @@ open System.Net
 open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
-open SocketExtensions
-open Common
-open Threading
+open Fracture.SocketExtensions
 open Fracture.Pipelets
 open System.Threading.Tasks.Dataflow
+open System.Threading
+open Fracture.Common
+open Fracture.Threading
 
 ///Creates a new TcpServer using the specified parameters
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent, ?overflow)=
@@ -21,6 +22,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
     let mutable disposed = false
     let errors (msg:string) = Console.WriteLine(msg)
+    let receiveAction = new ActionBlock<_>(received)
 
     /// Ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
@@ -39,14 +41,12 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             clients.TryRemove(ep, remsocket) |> ignore
             disconnected |> Option.iter (fun callback -> callback(ep) ))
 
-    let receiveBuffer = new BufferBlock<(EndPoint * Byte[])>()
-
-    let propagateReceive endPoint data=
-        if not <| receiveBuffer.Post(endPoint, data) then
-            overflow |> Option.iter  (fun x-> x data)
+    let propagateReceive (receiveArgs)=
+        if not <|receiveAction.Post(receiveArgs) then
+            overflow |> Option.iter  (fun overflow-> overflow receiveArgs)
 
     ///This function is called on each connect,sends,receive, and disconnect
-    let rec completed (args:SocketAsyncEventArgs) =
+    let rec completed(args:SocketAsyncEventArgs) =
         try
             if ExecutionContext.IsFlowSuppressed() then ExecutionContext.RestoreFlow()
             try
@@ -64,7 +64,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if not (args.LastOperation = SocketAsyncOperation.Accept) then
                 pool.CheckIn(args)//only check in non accepts
     
-    and processAccept (args) =
+    and processAccept(args) =
         match args.SocketError with
         | SocketError.Success ->
             let acceptSocket = args.AcceptSocket
@@ -88,10 +88,10 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
-                propagateReceive endPoint data
+                propagateReceive(endPoint, data)
 
             //start next accept
-            do listeningSocket.AcceptAsyncSafe(completed, args)
+            listeningSocket.AcceptAsyncSafe(completed, args)
         
         | SocketError.OperationAborted
         | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
@@ -109,7 +109,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             //process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
-            propagateReceive endPoint data
+            propagateReceive(endPoint, data)
             //get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()
@@ -129,30 +129,15 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             //Not shure we can even deal with specific failures, drop through to '_'
         | _ -> errors <| String.Concat("Socket Error: ", args.SocketError.ToString() )
     
-    let sendBuffer = new BufferBlock<(EndPoint * Byte[] * bool)>()
-
-    let sendloop =
-        let rec loop() = async {   
-            let! (endPoint, msg, keepAlive) = Async.AwaitTask(sendBuffer.ReceiveAsync())
-            let foundclient, client = clients.TryGetValue(endPoint)
-            if foundclient then
-                if client.Connected then
-                    try 
-                        send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore)
-                    with
-                    | ex -> errors ex.Message
-                else errors <| String.Format("Not sending, client:{0} not connected", endPoint.ToString() )
-            else 
-                errors <| String.Format("could not find client:{0}", endPoint.ToString() )
-            return! loop () }
-        loop()
-
-    let receiveLoop =
-        let rec loop() = async {
-            let! (endPoint, data) = Async.AwaitTask(receiveBuffer.ReceiveAsync())
-            received endPoint data
-            return! loop() }
-        loop()
+    let sendAction = new ActionBlock<_>(fun (endPoint, msg, keepAlive) ->
+        let foundclient, client = clients.TryGetValue(endPoint)
+        if foundclient then
+            if client.Connected then
+                try send client endPoint completed msg keepAlive pool.CheckOut (defaultArg disconnected ignore)
+                with
+                | ex -> errors ex.Message
+            else errors <| String.Format("Not sending, client:{0} not connected", endPoint.ToString() )
+        else errors <| String.Format("could not find client:{0}", endPoint.ToString()) )
 
     /// PoolSize=50k, Per operation buffer=1k, accept backlog=1000
     static member Create(received, ?connected, ?disconnected, ?sent) =
@@ -174,13 +159,11 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         listeningSocket.Listen(acceptBacklogCount)///starts listening on the specified address and port.
         for i in 1 .. acceptBacklogCount do
             listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
-        Async.Start sendloop
-        Async.Start receiveLoop
 
     member s.Dispose() = (s :> IDisposable).Dispose()
     
-    member s.Send endPoint msg keepAlive = 
-        sendBuffer.Post(endPoint, msg, keepAlive)
+    member s.Send endPoint keepAlive msg = 
+        sendAction.Post( (endPoint, msg, keepAlive) )
 
     interface IDisposable with 
         member s.Dispose() =

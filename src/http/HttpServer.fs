@@ -3,6 +3,7 @@
 open System
 open System.Text
 open System.Net
+open System.Threading.Tasks
 open Fracture
 open Fracture.Common
 open HttpMachine
@@ -17,16 +18,25 @@ type HttpServer(onRequest) as this =
     let parserCache = new ConcurrentDictionary<_,_>()
 
     let onDisconnect endPoint = 
+        Console.WriteLine(sprintf "Disconnect from %s" <| endPoint.ToString())
         parserCache.TryRemove(endPoint) 
         |> fun (removed, parser: HttpParser) -> 
-            if removed then parser.Execute(ArraySegment<_>()) |> ignore
+            if removed then
+                parser.Execute(ArraySegment<_>()) |> ignore
 
-    let rec createParser endPoint = 
-        HttpParser(ParserDelegate(requestEnded = fun req -> onRequest( req, (svr:TcpServer).Send endPoint )))
-    and onReceive endPoint data = 
-        parserCache.AddOrUpdate(endPoint, createParser endPoint, fun key value -> value )
-        |> fun e -> e.Execute( ArraySegment(data) ) |> ignore
-    and svr = TcpServer.Create(received = onReceive, disconnected = onDisconnect)
+    let rec svr = TcpServer.Create(received = onReceive, disconnected = onDisconnect)
+    and createParser endPoint = 
+        HttpParser(ParserDelegate(onHeaders = (fun headers -> (Console.WriteLine(sprintf "Headers: %A" headers.Headers))), //NOTE: on ab.exe without the keepalive option only the headers callback fires
+                                  requestBody = (fun body -> (Console.WriteLine(sprintf "Body: %A" body))),
+                                  requestEnded = fun req -> onRequest( req, (svr:TcpServer).Send endPoint req.RequestHeaders.KeepAlive) 
+                   ))
+
+    and onReceive: Func<_,_> = 
+        Func<_,_>( fun (endPoint, data) -> Task.Factory.StartNew(fun () ->
+        parserCache.AddOrUpdate(endPoint, createParser endPoint, fun _ value -> value )
+        |> fun parser -> parser.Execute( ArraySegment(data) ) |> ignore))
+
+    
     
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
