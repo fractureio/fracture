@@ -33,3 +33,4 @@ nuget/
 test/
 *_Spliced.*
 *.vsp
+AssemblyInfo.fs
