@@ -26,6 +26,7 @@ obj/
 [Rr]elease*/
 _ReSharper*/
 [Tt]est[Rr]esult*
+packages/
 build/
 deploy/
 docs/
@@ -33,3 +34,4 @@ nuget/
 test/
 *_Spliced.*
 *.vsp
+AssemblyInfo.fs
