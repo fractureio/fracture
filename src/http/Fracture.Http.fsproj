@@ -13,6 +13,8 @@
     <Name>Fracture.Http</Name>
     <FscToolPath>..\..\lib\FSharp\v4.0\bin</FscToolPath>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,11 +38,23 @@
   <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <ItemGroup>
     <Compile Include="Hex.fs" />
+    <Compile Include="Primitives.fs" />
+    <Compile Include="CharParsers.fs" />
+    <Compile Include="Uri.fs" />
+    <Compile Include="Http.fs" />
     <Compile Include="HttpMachineTemp.fs" />
     <Compile Include="HttpServer.fs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FParsec">
+      <HintPath>..\..\packages\FParsec.0.9.1\lib\net40\FParsec.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="FParsecCS">
+      <HintPath>..\..\packages\FParsec.0.9.1\lib\net40\FParsecCS.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="FSharp.AsyncExtensions">
       <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharp.AsyncExtensions.dll</HintPath>
       <Private>True</Private>
@@ -53,17 +67,10 @@
       <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Http.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="FSharpx.Stm">
-      <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Stm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FSharpx.Stm.Core">
-      <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Stm.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="HttpMachine">
-      <HintPath>..\..\packages\httpmachine.0.9.0.0\HttpMachine.dll</HintPath>
+      <HintPath>..\..\packages\HttpMachine.0.9.0.0\lib\HttpMachine.dll</HintPath>
     </Reference>
+    <Reference Include="HttpMachine" />
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
@@ -72,12 +79,18 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\fracture\Fracture.fsproj">
       <Name>Fracture</Name>
       <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
+  <PropertyGroup>
+    <PreBuildEvent>$(SolutionDir).nuget\Nuget.exe install $(ProjectDir)packages.config -o $(SolutionDir)packages</PreBuildEvent>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
 	<Target Name="BeforeBuild">

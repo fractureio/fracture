@@ -80,14 +80,6 @@
       <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Http.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="FSharpx.Stm">
-      <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Stm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FSharpx.Stm.Core">
-      <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Stm.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
@@ -100,6 +92,13 @@
     <Reference Include="System.Web.ApplicationServices" />
     <Reference Include="System.Web.Services" />
   </ItemGroup>
+  <PropertyGroup>
+    <PreBuildEvent>
+    </PreBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PreBuildEvent>$(SolutionDir).nuget\Nuget.exe install $(ProjectDir)packages.config -o $(SolutionDir)packages</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
 	<Target Name="BeforeBuild">

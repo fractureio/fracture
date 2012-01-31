@@ -1,11 +1,8 @@
 ﻿open System
-open System.Net
-open Fracture
-open Fracture.Common
-open Fracture.Http.Core
-open HttpMachine
 open System.Collections.Generic
 open System.Diagnostics
+open Fracture
+open Fracture.Http.Core
 
 let debug (x:UnhandledExceptionEventArgs) =
     Console.WriteLine(sprintf "%A" (x.ExceptionObject :?> Exception))

@@ -73,7 +73,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             //process newly connected client
             clients.AddOrUpdate(endPoint, acceptSocket, fun _ _ -> acceptSocket) |> ignore
 
-            //trigger connected
+            // trigger connected
             connected |> Option.iter (fun x  -> x endPoint)
             !++ connections
             args.AcceptSocket <- null (*remove the AcceptSocket because we're reusing args*)
@@ -84,7 +84,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             receiveSaea.UserToken <- endPoint
             acceptSocket.ReceiveAsyncSafe(completed, receiveSaea)
 
-            //check if data was given on connection
+            // check if data was given on connection
             if args.BytesTransferred > 0 then
                 let data = acquireData args
                 //trigger received
@@ -106,7 +106,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let socket = args.AcceptSocket
         let endPoint = args.UserToken :?> EndPoint
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
-            //process received data, check if data was given on connection.
+            // process received data, check if data was given on connection.
             let data = acquireData args
             //trigger received
             propagateReceive(endPoint, data)
