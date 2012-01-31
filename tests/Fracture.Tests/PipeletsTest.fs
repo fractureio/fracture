@@ -12,7 +12,7 @@ let ``test basicRouter should increment once with no attached stages``() =
         incr counter
         Seq.singleton msg
     
-    let start = new Pipelet<int,int>("Start", run, basicRouter, 1, -1)
+    let start = new Pipelet<int,int>("Start", run, Routers.basicRouter, 1, -1)
     async {
         start.Post 1
         // Give the post a chance to complete
@@ -28,8 +28,8 @@ let ``test basicRouter should increment twice with one attached stage``() =
         incr counter
         Seq.singleton msg
     
-    let start = new Pipelet<int,int>("Start", run, basicRouter, 1, -1)
-    let finish1 = new Pipelet<int,int>("Finish1", run, basicRouter, 1, -1)
+    let start = new Pipelet<int,int>("Start", run, Routers.basicRouter, 1, -1)
+    let finish1 = new Pipelet<int,int>("Finish1", run, Routers.basicRouter, 1, -1)
 
     start ++> finish1 |> ignore
 
@@ -48,9 +48,9 @@ let ``test basicRouter should increment twice with two attached stages``() =
         incr counter
         Seq.singleton msg
     
-    let start = new Pipelet<int,int>("Start", run, basicRouter, 1, -1)
-    let finish1 = new Pipelet<int,int>("Finish1", run, basicRouter, 1, -1)
-    let finish2 = new Pipelet<int,int>("Finish2", run, basicRouter, 1, -1)
+    let start = new Pipelet<int,int>("Start", run, Routers.basicRouter, 1, -1)
+    let finish1 = new Pipelet<int,int>("Finish1", run, Routers.basicRouter, 1, -1)
+    let finish2 = new Pipelet<int,int>("Finish2", run, Routers.basicRouter, 1, -1)
 
     start ++> finish1 |> ignore
     start ++> finish2 |> ignore
@@ -70,9 +70,9 @@ let ``test multicastRouter should increment once for the start and the one attac
         incr counter
         Seq.singleton msg
     
-    let start = new Pipelet<int,int>("Start", run, multicastRouter, 1, -1)
-    let finish1 = new Pipelet<int,int>("Finish1", run, multicastRouter, 1, -1)
-    let finish2 = new Pipelet<int,int>("Finish2", run, multicastRouter, 1, -1)
+    let start = new Pipelet<int,int>("Start", run, Routers.multicastRouter, 1, -1)
+    let finish1 = new Pipelet<int,int>("Finish1", run, Routers.multicastRouter, 1, -1)
+    let finish2 = new Pipelet<int,int>("Finish2", run, Routers.multicastRouter, 1, -1)
 
     start ++> finish1 |> ignore
     start ++> finish2 |> ignore
@@ -92,9 +92,9 @@ let ``test multicastRouter should increment once for the start and both attached
         incr counter
         Seq.singleton msg
     
-    let start = new Pipelet<int,int>("Start", run, multicastRouter, 1, -1)
-    let finish1 = new Pipelet<int,int>("Finish1", run, multicastRouter, 1, -1)
-    let finish2 = new Pipelet<int,int>("Finish2", run, multicastRouter, 1, -1)
+    let start = new Pipelet<int,int>("Start", run, Routers.multicastRouter, 1, -1)
+    let finish1 = new Pipelet<int,int>("Finish1", run, Routers.multicastRouter, 1, -1)
+    let finish2 = new Pipelet<int,int>("Finish2", run, Routers.multicastRouter, 1, -1)
 
     start ++> finish1 |> ignore
     start ++> finish2 |> ignore
@@ -114,10 +114,10 @@ let ``test multicastRouter should increment once for the start and all attached 
         incr counter
         Seq.singleton msg
     
-    let start = new Pipelet<int,int>("Start", run, multicastRouter, 1, -1)
-    let finish1 = new Pipelet<int,int>("Finish1", run, multicastRouter, 1, -1)
-    let finish2 = new Pipelet<int,int>("Finish2", run, multicastRouter, 1, -1)
-    let finish3 = new Pipelet<int,int>("Finish3", run, multicastRouter, 1, -1)
+    let start = new Pipelet<int,int>("Start", run, Routers.multicastRouter, 1, -1)
+    let finish1 = new Pipelet<int,int>("Finish1", run, Routers.multicastRouter, 1, -1)
+    let finish2 = new Pipelet<int,int>("Finish2", run, Routers.multicastRouter, 1, -1)
+    let finish3 = new Pipelet<int,int>("Finish3", run, Routers.multicastRouter, 1, -1)
 
     start ++> finish1 |> ignore
     start ++> finish2 |> ignore

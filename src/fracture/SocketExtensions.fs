@@ -2,13 +2,16 @@
 #nowarn "40"
 
 open System
+open System.Threading
 open System.Net
 open System.Net.Sockets
 open FSharpx
 
 /// Helper method to make Async calls easier.  InvokeAsyncMethod ensures the callback always
 /// gets called even if an error occurs or the Async method completes synchronously.
-let inline private invoke(asyncMethod, callback, args: SocketAsyncEventArgs) =
+let private invoke(asyncMethod, callback, args: SocketAsyncEventArgs) =
+    if not <| ExecutionContext.IsFlowSuppressed() then
+        ExecutionContext.SuppressFlow() |> ignore
     if not (asyncMethod args) then callback args
 
 exception SocketIssue of SocketError
