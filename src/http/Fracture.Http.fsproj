@@ -13,6 +13,8 @@
     <Name>Fracture.Http</Name>
     <FscToolPath>..\..\lib\FSharp\v4.0\bin</FscToolPath>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -64,17 +66,10 @@
       <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Http.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="FSharpx.Stm">
-      <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Stm.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="FSharpx.Stm.Core">
-      <HintPath>..\..\packages\FSharpx.Core.1.3.111030\lib\FSharpx.Stm.Core.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
     <Reference Include="HttpMachine">
-      <HintPath>..\..\packages\httpmachine.0.9.0.0\HttpMachine.dll</HintPath>
+      <HintPath>..\..\packages\HttpMachine.0.9.0.0\lib\HttpMachine.dll</HintPath>
     </Reference>
+    <Reference Include="HttpMachine" />
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core">
       <HintPath>..\..\lib\FSharp\v4.0\bin\FSharp.Core.dll</HintPath>
@@ -91,6 +86,10 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
+  <PropertyGroup>
+    <PreBuildEvent>$(SolutionDir).nuget\Nuget.exe install $(ProjectDir)packages.config -o $(SolutionDir)packages</PreBuildEvent>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
 	<Target Name="BeforeBuild">

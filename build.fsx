@@ -33,7 +33,7 @@ let target = getBuildParamOrDefault "target" "All"
 
 // tools
 let fakePath = "./packages/FAKE.1.56.7/tools"
-let nugetPath = "./lib/Nuget/nuget.exe"
+let nugetPath = "./.nuget/nuget.exe"
 let nunitPath = "./packages/NUnit.2.5.9.10348/Tools"
 
 // files
