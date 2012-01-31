@@ -47,6 +47,7 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
     member this.Start(callback) =
         for n in 0 .. maxPoolCount - 1 do
             let args = new SocketAsyncEventArgs()
+            args.DisconnectReuseSocket <- true
             let subscription = args.Completed |> Observable.subscribe callback
             subscriptions.[args.GetHashCode()] <- subscription
             args.SetBuffer(buffer, n*perBocketBufferSize, perBocketBufferSize)
@@ -54,7 +55,7 @@ type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
 
     member this.CheckOut() =
         if not !disposed then
-            let suc,res = BocketPool.TryTakeAsTuple pool 1000
+            let suc,res = BocketPool.TryTakeAsTuple pool 10000
             if suc then 
                 res.Value 
             else raiseTimeout()

@@ -3,24 +3,41 @@
 open System
 open System.Text
 open System.Net
+open System.Threading.Tasks
 open Fracture
 open Fracture.Common
 open HttpMachine
 open System.Collections.Generic
 open System.Diagnostics
 open System.Collections.Concurrent
+open Fracture.Pipelets
+open Fracture.Http.Core
 
-type HttpServer(headers, body, requestEnd) as this = 
+type HttpServer(onRequest) as this = 
     let disposed = ref false
+    let parserCache = new ConcurrentDictionary<_,_>()
 
-    let svr = TcpServer.Create((fun (data,svr,sd) -> 
-        let parser =
-            let parserDelegate = ParserDelegate(requestBegan =(fun (a,b) -> headers(a,b,this,sd)), 
-                                                requestBody = (fun data -> (body(data, svr,sd))), 
-                                                requestEnded = (fun req -> (requestEnd(req, svr, sd))))
-            HttpParser(parserDelegate)
-        parser.Execute(new ArraySegment<_>(data)) |> ignore))
+    let onDisconnect endPoint = 
+        Console.WriteLine(sprintf "Disconnect from %s" <| endPoint.ToString())
+        parserCache.TryRemove(endPoint) 
+        |> fun (removed, parser: HttpParser) -> 
+            if removed then
+                parser.Execute(ArraySegment<_>()) |> ignore
 
+    let rec svr = TcpServer.Create(received = onReceive, disconnected = onDisconnect)
+    and createParser endPoint = 
+        HttpParser(ParserDelegate(onHeaders = (fun headers -> (Console.WriteLine(sprintf "Headers: %A" headers.Headers))), //NOTE: on ab.exe without the keepalive option only the headers callback fires
+                                  requestBody = (fun body -> (Console.WriteLine(sprintf "Body: %A" body))),
+                                  requestEnded = fun req -> onRequest( req, (svr:TcpServer).Send endPoint req.RequestHeaders.KeepAlive) 
+                   ))
+
+    and onReceive: Func<_,_> = 
+        Func<_,_>( fun (endPoint, data) -> Task.Factory.StartNew(fun () ->
+        parserCache.AddOrUpdate(endPoint, createParser endPoint, fun _ value -> value )
+        |> fun parser -> parser.Execute( ArraySegment(data) ) |> ignore))
+
+    
+    
     //ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
         if not !disposed then
@@ -29,10 +46,6 @@ type HttpServer(headers, body, requestEnd) as this =
             disposed := true
         
     member h.Start(port) = svr.Listen(IPAddress.Loopback, port)
-
-    member h.Send(client, (response:string), keepAlive) = 
-        let encoded = Encoding.ASCII.GetBytes(response)
-        svr.Send(client, encoded, keepAlive)
 
     interface IDisposable with
         member h.Dispose() =
