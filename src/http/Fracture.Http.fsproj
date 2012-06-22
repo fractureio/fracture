@@ -37,11 +37,16 @@
   <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <ItemGroup>
+    <Compile Include="Owin.fs" />
     <Compile Include="HttpParser.fs" />
     <Compile Include="HttpServer.fs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FSharpx.Core">
+      <HintPath>..\..\packages\FSharpx.Core.1.6.1\lib\40\Fsharpx.Core.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="HttpMachine">
       <HintPath>..\..\packages\HttpMachine.0.9.0.0\lib\HttpMachine.dll</HintPath>
       <Private>True</Private>
