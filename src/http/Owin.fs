@@ -8,18 +8,18 @@ open FSharp.Control
 
 type MessageBody = AsyncSeq<ArraySegment<byte>>
 
-[<Struct>]
-type Request =
-    val Environment : IDictionary<string, obj>
-    val Headers : IDictionary<string, string[]>
-    val Body : MessageBody
+type Request = {
+    Environment : IDictionary<string, obj>
+    Headers : IDictionary<string, string[]>
+    Body : MessageBody
+}
 
-[<Struct>]
-type Response =
-    val StatusCode : int
-    val Headers : IDictionary<string, string[]>
-    val Body : MessageBody
-    val Properties : IDictionary<string, obj>
+type Response = {
+    StatusCode : int
+    Headers : IDictionary<string, string[]>
+    Body : MessageBody
+    Properties : IDictionary<string, obj>
+}
 
 type AppDelegate = Request -> Async<Response>
 
