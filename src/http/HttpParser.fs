@@ -18,71 +18,56 @@
 namespace Fracture.Http
 
 open System
+open System.Collections.Generic
 open System.Net
 open Fracture
+open FSharp.Control
 open HttpMachine
-open System.Collections.Generic
-open System.Diagnostics
+open Owin
 
-type HttpRequestHeaders =
-    { Method: string
-      Uri: string
-      Query: string
-      Fragment: string
-      Version: Version
-      KeepAlive: bool
-      Headers: IDictionary<string, string> }
-    with static member Default =
-            { Method = String.Empty
-              Uri = String.Empty
-              Query = String.Empty
-              Fragment = String.Empty
-              Version = Version()
-              KeepAlive = false
-              Headers = new Dictionary<string, string>() :> IDictionary<string, string> }
-
-type HttpRequest =
-    { RequestHeaders: HttpRequestHeaders
-      Body: ArraySegment<byte> }
-
-type ParserDelegate(onHeaders, requestBody, requestEnded) as p =
-    [<DefaultValue>] val mutable method' : string
-    [<DefaultValue>] val mutable requestUri: string
-    [<DefaultValue>] val mutable fragment : string
-    [<DefaultValue>] val mutable queryString : string
+type ParserDelegate(?onHeaders, ?requestBody, ?requestEnded) as p =
     [<DefaultValue>] val mutable headerName : string
     [<DefaultValue>] val mutable headerValue : string
-    [<DefaultValue>] val mutable fullRequest:HttpRequest 
-    [<DefaultValue>] val mutable requestHeaders:HttpRequestHeaders 
-    [<DefaultValue>] val mutable body:ArraySegment<byte>
-    let mutable headers = new Dictionary<string,string>()
+    [<DefaultValue>] val mutable onBody: Event<ArraySegment<byte>>
+    [<DefaultValue>] val mutable request: Owin.Request
 
     let commitHeader() = 
-        headers.Add(p.headerName, p.headerValue)
+        p.request.Headers.[p.headerName] <- [|p.headerValue|]
         p.headerName <- null
         p.headerValue <- null
 
     interface IHttpParserHandler with
         member this.OnMessageBegin(parser: HttpParser) =
-            this.method' <- null
-            this.requestUri <- null
-            this.fragment <- null
-            this.queryString <- null
             this.headerName <- null
             this.headerValue <- null
-            headers.Clear()
+            this.onBody <- Event<ArraySegment<byte>>()
+            this.request <- {
+                Environment = new Dictionary<string, obj>()
+                Headers = new Dictionary<string, string[]>()
+                Body = this.onBody.Publish |> AsyncSeq.ofObservableBuffered
+            }
+            this.request.Environment.Add(Request.Version, "1.0")
 
         member this.OnMethod( parser, m) = 
-            this.method' <- m
+            this.request.Environment.Add(Request.Method, m)
 
         member this.OnRequestUri(_, requestUri) = 
-            this.requestUri <- requestUri
+            let uri = Uri(requestUri)
+            this.request.Environment.Add("fracture.RequestUri", uri)
+
+            // TODO: Fix this so that the path can be determined correctly.
+            this.request.Environment.Add(Request.PathBase, "")
+            this.request.Environment.Add(Request.Path, uri.AbsolutePath)
+
+            if uri.IsAbsoluteUri then
+                this.request.Environment.Add(Request.Scheme, uri.Scheme)
+                this.request.Headers.Add("Host", [|uri.Host|])
 
         member this.OnFragment(_, fragment) = 
-            this.fragment <- fragment
+            this.request.Environment.Add("fracture.RequestFragment", fragment)
 
         member this.OnQueryString(_, queryString) = 
-            this.queryString <- queryString
+            this.request.Environment.Add(Request.QueryString, queryString)
 
         member this.OnHeaderName(_, name) = 
             if not (String.IsNullOrEmpty(this.headerValue)) then
@@ -98,21 +83,16 @@ type ParserDelegate(onHeaders, requestBody, requestEnded) as p =
             if not (String.IsNullOrEmpty(this.headerValue)) then
                 commitHeader()
 
-            p.requestHeaders <- { Method = this.method'
-                                  Uri = this.requestUri
-                                  Query = this.queryString
-                                  Fragment = this.fragment
-                                  Version = Version(parser.MajorVersion, parser.MinorVersion)
-                                  KeepAlive = parser.ShouldKeepAlive
-                                  Headers = headers }
+            this.request.Environment.Add("fracture.HttpVersion", Version(parser.MajorVersion, parser.MinorVersion))
+            this.request.Environment.Add("fracture.KeepAlive", parser.ShouldKeepAlive)
 
-            onHeaders(p.requestHeaders)
+            onHeaders |> Option.iter (fun f -> f this.request)
 
         member this.OnBody(_, data) =
             // XXX can we defer this check to the parser?
             if data.Count > 0 then
-                p.body <- data
-                requestBody(p.body)
+                this.onBody.Trigger data
+                requestBody |> Option.iter (fun f -> f data)
 
         member this.OnMessageEnd(_) =
-            requestEnded({ RequestHeaders = p.requestHeaders; Body = p.body })
+            requestEnded |> Option.iter (fun f -> f this.request)

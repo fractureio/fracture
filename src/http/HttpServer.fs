@@ -28,12 +28,13 @@ open System.Threading.Tasks
 open Fracture
 open Fracture.Common
 open HttpMachine
+open Owin
 
 [<Sealed>]
 type HttpServer(headers, body, requestEnd) as this = 
     let mutable disposed = false
     let parserCache = new ConcurrentDictionary<_,HttpParser>()
-    let svr = TcpServer.Create()
+    let svr = new TcpServer()
 
     let createParser svr sd =
         let parserDelegate = ParserDelegate(onHeaders = (fun h -> headers(h,this,sd)), 
