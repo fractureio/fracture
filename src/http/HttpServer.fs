@@ -27,43 +27,39 @@ open System.Text
 open System.Threading.Tasks
 open Fracture
 open Fracture.Common
+open Fracture.Pipelets
+open FSharp.Control
 open HttpMachine
 open Owin
 
 [<Sealed>]
-type HttpServer(headers, body, requestEnd) as this = 
-    let mutable disposed = false
+type HttpServer(app) as this = 
     let parserCache = new ConcurrentDictionary<_,HttpParser>()
-    let svr = new TcpServer()
-
-    let createParser svr sd =
-        let parserDelegate = ParserDelegate(onHeaders = (fun h -> headers(h,this,sd)), 
-                                            requestBody = (fun data -> (body(data, svr,sd))), 
-                                            requestEnded = (fun req -> (requestEnd(req, svr, sd))))
+    let tcp = new TcpServer()
+    let send client keepAlive data = tcp.Send(client, data, keepAlive)
+        
+    let createParser sd =
+        let parserDelegate = ParserDelegate(app, send sd.RemoteEndPoint)
         HttpParser(parserDelegate)
 
     let receivedSubscription =
-        svr.OnReceived.Subscribe(fun (svr, (data, sd)) -> 
-            let parser = parserCache.AddOrUpdate(sd.RemoteEndPoint, createParser svr sd, fun _ value -> value)
+        tcp.OnReceived.Subscribe(fun (_, (data, sd)) -> 
+            let parser = parserCache.AddOrUpdate(sd.RemoteEndPoint, createParser sd, fun _ value -> value)
             parser.Execute(new ArraySegment<_>(data)) |> ignore)
 
     let disconnectSubscription =
-        svr.OnDisconnected.Subscribe(fun (svr, sd) ->
+        tcp.OnDisconnected.Subscribe(fun (_, sd) ->
             let removed, parser = parserCache.TryRemove(sd.RemoteEndPoint)
             if removed then
                 parser.Execute(ArraySegment<_>()) |> ignore)
-
-    member h.Start(port) = svr.Listen(IPAddress.Loopback, port)
-
-    member h.Send(client, (response:string), keepAlive) = 
-        let encoded = Encoding.ASCII.GetBytes(response)
-        svr.Send(client, encoded, keepAlive)
+        
+    member h.Start(port) = tcp.Listen(IPAddress.Loopback, port)
 
     /// Ensures the listening socket is shutdown on disposal.
     member h.Dispose() =
         receivedSubscription.Dispose()
         disconnectSubscription.Dispose()
-        svr.Dispose()
+        tcp.Dispose()
         GC.SuppressFinalize(this)
 
     interface IDisposable with

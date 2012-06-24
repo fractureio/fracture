@@ -45,6 +45,11 @@
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\fracture\Fracture.fsproj">
+      <Name>Fracture</Name>
+      <Project>{020697d7-24a3-4ce4-a326-d2c7c204ffde}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\..\src\http\Fracture.Http.fsproj">
       <Name>Fracture.Http</Name>
       <Project>{13571762-e1c9-492a-9141-37aa0094759a}</Project>
