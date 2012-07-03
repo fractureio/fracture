@@ -31,5 +31,6 @@ deploy/
 docs/
 nuget/
 test/
+packages/
 *_Spliced.*
 *.vsp

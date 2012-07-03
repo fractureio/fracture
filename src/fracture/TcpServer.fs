@@ -1,11 +1,11 @@
 ﻿namespace Fracture
 
 open System
+open System.Collections.Concurrent
+open System.Collections.Generic
 open System.Diagnostics
 open System.Net
 open System.Net.Sockets
-open System.Collections.Generic
-open System.Collections.Concurrent
 open SocketExtensions
 open Common
 open Threading
@@ -17,17 +17,17 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
     let clients = new ConcurrentDictionary<_,_>()
     let connections = ref 0
     let listeningSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
-    let disposed = ref false
+    let mutable disposed = false
        
     /// Ensures the listening socket is shutdown on disposal.
     let cleanUp disposing = 
-        if not !disposed then
+        if not disposed then
             if disposing then
                 if listeningSocket <> null then
                     disposeSocket listeningSocket
                 pool.Dispose()
                 connectionPool.Dispose()
-            disposed := true
+            disposed <- true
 
     let disconnect (sd:SocketDescriptor) =
         !-- connections
@@ -83,7 +83,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
                 received (data, s, sd)
         
         | SocketError.OperationAborted
-        | SocketError.Disconnecting when !disposed -> ()// stop accepting here, we're being shutdown.
+        | SocketError.Disconnecting when disposed -> ()// stop accepting here, we're being shutdown.
         | _ -> Debug.WriteLine (sprintf "socket error on accept: %A" args.SocketError)
          
     and processDisconnect (args) =
@@ -145,11 +145,9 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             send {Socket = client;RemoteEndPoint = clientEndPoint}  completed  pool.CheckOut perOperationBufferSize msg keepAlive
         else failwith "could not find client %"
         
-    member s.Dispose() = (s :> IDisposable).Dispose()
-
-    override s.Finalize() = cleanUp false
+    member s.Dispose() =
+        cleanUp true
+        GC.SuppressFinalize(s)
         
     interface IDisposable with 
-        member s.Dispose() =
-            cleanUp true
-            GC.SuppressFinalize(s)
+        member s.Dispose() = s.Dispose()

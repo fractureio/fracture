@@ -13,6 +13,8 @@
     <Name>Fracture</Name>
     <FscToolPath>..\..\lib\FSharp\v4.0\bin\</FscToolPath>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+		<RestorePackages>true</RestorePackages>
+		<SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -34,8 +36,8 @@
     <DocumentationFile>bin\Release\Fracture.XML</DocumentationFile>
   </PropertyGroup>
   <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
   <ItemGroup>
-    <None Include="packages.config" />
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="Pipelets.fs" />
     <Compile Include="ObjectPool.fs" />
