@@ -1,7 +1,7 @@
-#I "./packages/FAKE.1.56.7/tools"
+#I "./packages/FAKE.1.64.6/tools"
 #r "FakeLib.dll"
 
-open Fake 
+open Fake
 open System.IO
 
 // properties
@@ -21,19 +21,22 @@ let packagesDir = "./packages/"
 let testDir = "./test/"
 let deployDir = "./deploy/"
 let docsDir = "./docs/"
-let nugetDir = "./nuget/"
+
 let targetPlatformDir = getTargetPlatformDir "4.0.30319"
-let nugetLibDir = nugetDir @@ "lib"
+
+let nugetDir = "./nuget/"
+let nugetLibDir = nugetDir @@ "lib/net40"
 let nugetDocsDir = nugetDir @@ "docs"
-let fsharpxVersion = GetPackageVersion packagesDir "FSharpx.Core"
+
+let fsharpxVersion = GetPackageVersion packagesDir "HttpMachine"
 
 // params
 let target = getBuildParamOrDefault "target" "All"
 
 // tools
-let fakePath = "./packages/FAKE.1.56.7/tools"
+let fakePath = "./packages/FAKE.1.64.6/tools"
 let nugetPath = "./lib/Nuget/nuget.exe"
-let nunitPath = "./packages/NUnit.2.5.9.10348/Tools"
+let nunitPath = "./packages/NUnit.Runners.2.6.0.12051/tools"
 
 // files
 let appReferences =
@@ -129,7 +132,7 @@ Target "BuildNuGet" (fun _ ->
             Description = projectDescription
             Version = version
             OutputPath = nugetDir
-            Dependencies = ["FSharpx.Core",RequireExactly fsharpxVersion]
+            Dependencies = ["HttpMachine",RequireExactly fsharpxVersion]
             AccessKey = nugetKey
             ToolPath = nugetPath
             Publish = nugetKey <> "" })
