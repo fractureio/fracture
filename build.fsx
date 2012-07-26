@@ -6,14 +6,13 @@ open System.IO
 
 // properties
 let projectName = "Fracture"
-let version = "0.1." + System.DateTime.UtcNow.ToString("yyyyMMdd")
+let version = if isLocalBuild then "0.1." + System.DateTime.UtcNow.ToString("yMMdd") else buildVersion
 let projectSummary = "Fracture is an F# based socket implementation for high-speed, high-throughput applications."
 let projectDescription = "Fracture is an F# based socket implementation for high-speed, high-throughput applications. It is built on top of SocketAsyncEventArgs, which minimises the memory fragmentation common in the IAsyncResult pattern."
 let authors = ["Dave Thomas";"Ryan Riley"]
 let mail = "ryan.riley@panesofglass.org"
 let homepage = "http://github.com/fractureio/fracture"
 let license = "http://github.com/fractureio/fracture/raw/master/LICENSE.txt"
-let nugetKey = if System.IO.File.Exists "./key.txt" then ReadFileAsString "./key.txt" else ""
 
 // directories
 let buildDir = "./build/"
@@ -28,7 +27,7 @@ let nugetDir = "./nuget/"
 let nugetLibDir = nugetDir @@ "lib/net40"
 let nugetDocsDir = nugetDir @@ "docs"
 
-let fsharpxVersion = GetPackageVersion packagesDir "HttpMachine"
+let httpMachineVersion = GetPackageVersion packagesDir "HttpMachine"
 
 // params
 let target = getBuildParamOrDefault "target" "All"
@@ -132,10 +131,10 @@ Target "BuildNuGet" (fun _ ->
             Description = projectDescription
             Version = version
             OutputPath = nugetDir
-            Dependencies = ["HttpMachine",RequireExactly fsharpxVersion]
-            AccessKey = nugetKey
+            Dependencies = ["HttpMachine",RequireExactly httpMachineVersion]
+            AccessKey = getBuildParamOrDefault "nugetkey" ""
             ToolPath = nugetPath
-            Publish = nugetKey <> "" })
+            Publish = hasBuildParam "nugetKey" })
         "fracture.nuspec"
 
     [nugetDir + sprintf "Fracture.%s.nupkg" version]
