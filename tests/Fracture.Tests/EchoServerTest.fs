@@ -58,8 +58,6 @@ let ``client starts and stops cleanly even if it does not connect``(poolSize:int
     use client = makeEchoClient testEndPoint poolSize size
     ()
 
-<<<<<<< HEAD
-=======
 [<Test>]
 let ``server listens when started and stops listening when stopped``() =
     let startAndStop() =
@@ -110,4 +108,3 @@ let ``echo server will echo data from naive socket call``
         buffer |> should equal message
     echoTest()
     shouldNotBeListening()
->>>>>>> 7eaa906... transparently enforce minimum pool sizes: two per pool, as a new saea is pulled from the pool while the other is still being used, even to accept one connection or send one message.
