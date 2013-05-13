@@ -55,11 +55,19 @@ type TcpClient(ipEndPoint, poolSize, size) =
             | SocketAsyncOperation.Connect -> processConnect args
             | SocketAsyncOperation.Receive -> processReceive args
             | SocketAsyncOperation.Send -> processSend args
-            //TODO: add disconnect
-            | _ -> args.LastOperation |> failwith "Unknown operation: %a"            
+            | SocketAsyncOperation.Disconnect -> processDisconnect args
+            | _ -> args.LastOperation |> failwithf "Unknown operation: %A"            
         finally
             args.UserToken <- null
             pool.CheckIn(args)
+
+    and processDisconnect args = 
+        if args.SocketError = SocketError.Disconnecting
+        then 
+            serverEndPoint <- listeningSocket.RemoteEndPoint :?> IPEndPoint
+            disconnectedEvent.Trigger(serverEndPoint)
+            args.DisconnectReuseSocket <- true
+        else args.SocketError.ToString() |> printfn "socket error on disconnect: %s"
 
     and processConnect args =
         if args.SocketError = SocketError.Success then
@@ -95,7 +103,7 @@ type TcpClient(ipEndPoint, poolSize, size) =
             closeConnection listeningSocket
 
     and processSend args =
-        let sock = args.UserToken :?> Socket
+        let sock = args.UserToken :?> SocketDescriptor
         match args.SocketError with
         | SocketError.Success ->
             let sentData = acquireData args
@@ -117,9 +125,9 @@ type TcpClient(ipEndPoint, poolSize, size) =
     [<CLIEvent>]member this.Received = receivedEvent.Publish
 
     ///Sends the specified message to the client.
-    member this.Send(msg:byte[], (close:bool)) =
+    member this.Send(msg:byte[], (keepAlive:bool)) =
         if listeningSocket.Connected then
-            send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint}  completed  pool.CheckOut  size msg close
+            send {Socket = listeningSocket; RemoteEndPoint = serverEndPoint}  completed  pool.CheckOut  size msg keepAlive
         else listeningSocket.RemoteEndPoint :?> IPEndPoint |> disconnectedEvent.Trigger
         
     ///Starts connecting with remote server
