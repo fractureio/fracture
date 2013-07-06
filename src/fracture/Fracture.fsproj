@@ -37,6 +37,7 @@
   </PropertyGroup>
   <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
+  <Import Project="../../.nuget/BuildMagic.targets" />
   <ItemGroup>
     <Compile Include="SocketExtensions.fs" />
     <Compile Include="Pipelets.fs" />
@@ -58,7 +59,6 @@
     <Reference Include="System.Web.ApplicationServices" />
     <Reference Include="System.Web.Services" />
   </ItemGroup>
-  <Import Project="../../.nuget/BuildMagic.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
 	<Target Name="BeforeBuild">
