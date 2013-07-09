@@ -28,7 +28,6 @@ open System.Threading.Tasks
 open Fracture
 open Fracture.Common
 open Fracture.Pipelets
-open FSharp.Control
 open HttpMachine
 open Owin
 

@@ -22,9 +22,9 @@ open System.Net.Sockets
 open System.Collections.Generic
 open System.Collections.Concurrent
 open Microsoft.FSharp.Core.Operators.Unchecked
-open SocketExtensions
+open Fracture.SocketExtensions
 
-type internal BocketPool(name, maxPoolCount, perBocketBufferSize) =
+type BocketPool(name, maxPoolCount, perBocketBufferSize) =
     let totalsize = (maxPoolCount * perBocketBufferSize)
     let buffer = Array.zeroCreate<byte> totalsize
     let pool = new BlockingCollection<SocketAsyncEventArgs>(maxPoolCount:int)

@@ -1,6 +1,6 @@
 ﻿namespace Fracture
 
 type RemoteAgent(port, host) =
-    let server = TcpServer.Create()
+    let server = new TcpServer() 
     member this.Start(address, port) = server.Listen(address, port)
     member this.Stop = server.Dispose()
