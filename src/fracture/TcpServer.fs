@@ -57,7 +57,7 @@ type TcpServer(?poolSize, ?perOperationBufferSize, ?acceptBacklogCount) as s =
 
     let disconnect (sd:SocketDescriptor) =
         !-- connections
-        disconnected.Trigger(s, sd.RemoteEndPoint)
+        disconnected.Trigger(s, sd)
         sd.Socket.Shutdown(SocketShutdown.Both)
         if sd.Socket.Connected then sd.Socket.Disconnect(true)
 
@@ -70,7 +70,7 @@ type TcpServer(?poolSize, ?perOperationBufferSize, ?acceptBacklogCount) as s =
         | SocketError.Success ->
             let sentData = acquireData args
             // notify data sent
-            sent.Trigger(s, (sentData, sd.RemoteEndPoint))
+            sent.Trigger(s, (sentData, sd))
         | SocketError.NoBufferSpaceAvailable
         | SocketError.IOPending
         | SocketError.WouldBlock ->
@@ -130,7 +130,7 @@ type TcpServer(?poolSize, ?perOperationBufferSize, ?acceptBacklogCount) as s =
             // if not success then failwith "client could not be added"
 
             // trigger connected
-            connected.Trigger(s, endPoint)
+            connected.Trigger(s, {Socket = acceptSocket; RemoteEndPoint = endPoint})
             !++ connections
             args.AcceptSocket <- null (*remove the AcceptSocket because we're reusing args*)
 

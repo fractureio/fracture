@@ -47,8 +47,8 @@ type HttpServer(headers, body, requestEnd) as this =
             parser.Execute(new ArraySegment<_>(data)) |> ignore)
 
     let disconnectSubscription =
-        svr.OnDisconnected.Subscribe(fun (svr, endPoint) ->
-            let removed, parser = parserCache.TryRemove(endPoint)
+        svr.OnDisconnected.Subscribe(fun (svr, sd) ->
+            let removed, parser = parserCache.TryRemove(sd.RemoteEndPoint)
             if removed then
                 parser.Execute(ArraySegment<_>()) |> ignore)
 
