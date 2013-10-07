@@ -172,6 +172,9 @@ type Environment() as x =
     let requestHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
     do x.Add(Constants.requestHeaders, requestHeaders)
 
+    let requestBody = new MemoryStream()
+    do x.Add(Constants.requestBody, requestBody)
+
     (* Set response defaults *)
     do x.Add(Constants.responseStatusCode, 200)
 
@@ -184,6 +187,14 @@ type Environment() as x =
 
     /// Gets the request headers dictionary for the current request.
     member x.RequestHeaders = requestHeaders
+
+    /// Gets the request body for the current request.
+    member x.RequestBody = requestBody
+
+    /// Gets the response status code for the current request.
+    member x.ResponseStatusCode
+        with get() : int = unbox x.[Constants.responseStatusCode]
+        and set(v : int) = x.[Constants.responseStatusCode] <- v
 
     /// Gets the response headers dictionary for the current response.
     member x.ResponseHeaders = responseHeaders

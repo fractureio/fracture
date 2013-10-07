@@ -52,14 +52,15 @@ type HttpServer(app) as this =
             if removed then
                 parser.Execute(ArraySegment<_>()) |> ignore)
         
-    member h.Start(port) = tcp.Listen(IPAddress.Loopback, port)
+    member this.Start(port) =
+        tcp.Listen(IPAddress.Loopback, port)
 
     /// Ensures the listening socket is shutdown on disposal.
-    member h.Dispose() =
+    member this.Dispose() =
         receivedSubscription.Dispose()
         disconnectSubscription.Dispose()
         tcp.Dispose()
         GC.SuppressFinalize(this)
 
     interface IDisposable with
-        member h.Dispose() = h.Dispose()
+        member this.Dispose() = this.Dispose()

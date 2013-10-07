@@ -28,6 +28,7 @@ open Common
 open Threading
 
 /// Creates a new TcpServer using the specified parameters
+/// PoolSize=10k, Per operation buffer=1k, accept backlog=10000
 type TcpServer(?poolSize, ?perOperationBufferSize, ?acceptBacklogCount) as s =
     let poolSize = defaultArg poolSize 30000
     let perOperationBufferSize = defaultArg perOperationBufferSize 1024
@@ -170,6 +171,7 @@ type TcpServer(?poolSize, ?perOperationBufferSize, ?acceptBacklogCount) as s =
         // initialise the pool
         pool.Start(completed)
         connectionPool.Start(acceptCompleted)
+
         // starts listening on the specified address and port.
         // This disables nagle
         //listeningSocket.NoDelay <- true 
