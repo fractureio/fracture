@@ -34,3 +34,4 @@ test/
 packages/
 *_Spliced.*
 *.vsp
+.build/
