@@ -27,7 +27,7 @@ open SocketExtensions
 open Common
 open Threading
 
-///Creates a new TcpServer using the specified parameters
+/// Creates a new TcpServer using the specified parameters
 type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?connected, ?disconnected, ?sent) as s=
     let pool = new BocketPool("regular pool", max poolSize 2, perOperationBufferSize)
     let connectionPool = new BocketPool("connection pool", max (acceptBacklogCount * 2) 2, perOperationBufferSize)(*Note: 288 bytes is the minimum size for a connection*)
@@ -61,7 +61,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         match args.SocketError with
         | SocketError.Success ->
             let sentData = acquireData args
-            //notify data sent
+            // notify data sent
             sent |> Option.iter (fun x  -> x (sentData, sd.RemoteEndPoint))
         | SocketError.NoBufferSpaceAvailable
         | SocketError.IOPending
@@ -69,7 +69,7 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
             failwith "Buffer overflow or send buffer timeout" //graceful termination?  
         | _ -> args.SocketError.ToString() |> printfn "socket error on send: %s"
 
-    ///This function is called on each connect,sends,receive, and disconnect
+    /// This function is called on each connect,sends,receive, and disconnect
     let rec completed (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
@@ -85,19 +85,19 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
         let sd = args.UserToken :?> SocketDescriptor
         let socket = sd.Socket
         if args.SocketError = SocketError.Success && args.BytesTransferred > 0 then
-            //process received data, check if data was given on connection.
+            // process received data, check if data was given on connection.
             let data = acquireData args
-            //trigger received
+            // trigger received
             received (data, s, sd )
-            //get on with the next receive
+            // get on with the next receive
             if socket.Connected then 
                 let saea = pool.CheckOut()
                 saea.UserToken <- sd
                 socket.ReceiveAsyncSafe(completed, saea)
-        //0 byte receive - disconnect.
+        // 0 byte receive - disconnect.
         else disconnect sd
 
-    ///This function is called on each connect,sends,receive, and disconnect
+    /// This function is called on each connect,sends,receive, and disconnect
     let rec acceptCompleted (args:SocketAsyncEventArgs) =
         try
             match args.LastOperation with
@@ -149,20 +149,20 @@ type TcpServer(poolSize, perOperationBufferSize, acceptBacklogCount, received, ?
 
     member s.Connections = connections
 
-    ///Starts the accepting a incoming connections.
+    /// Starts the accepting a incoming connections.
     member s.Listen(address: IPAddress, port) =
-        //initialise the pool
+        // initialise the pool
         pool.Start(completed)
         connectionPool.Start(acceptCompleted)
-        ///starts listening on the specified address and port.
-        //This disables nagle
+        // starts listening on the specified address and port.
+        // This disables nagle
         //listeningSocket.NoDelay <- true 
         listeningSocket.Bind(IPEndPoint(address, port))
         listeningSocket.Listen(acceptBacklogCount)
         for i in 1 .. acceptBacklogCount do
-            listeningSocket.AcceptAsyncSafe(completed, connectionPool.CheckOut())
+            listeningSocket.AcceptAsyncSafe(acceptCompleted, connectionPool.CheckOut())
 
-    ///Sends the specified message to the client.
+    /// Sends the specified message to the client.
     member s.Send(clientEndPoint, msg, keepAlive) =
         let success, client = clients.TryGetValue(clientEndPoint)
         if success then 
