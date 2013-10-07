@@ -24,21 +24,32 @@ open System.Collections.Generic
 open System.Diagnostics
 open System.Net
 open System.Text
+open System.Threading.Tasks
 open Fracture
 open Fracture.Common
 open HttpMachine
 
 type HttpServer(headers, body, requestEnd) as this = 
     let mutable disposed = false
+    let parserCache = new ConcurrentDictionary<_,HttpParser>()
 
-    let svr = TcpServer.Create((fun (data,svr,sd) -> 
-        let parser =
-            let parserDelegate = ParserDelegate(onHeaders = (fun h -> headers(h,this,sd)), 
-                                                requestBody = (fun data -> (body(data, svr,sd))), 
-                                                requestEnded = (fun req -> (requestEnd(req, svr, sd))))
-            HttpParser(parserDelegate)
-        parser.Execute(new ArraySegment<_>(data)) |> ignore))
-        
+    let createParser svr sd =
+        let parserDelegate = ParserDelegate(onHeaders = (fun h -> headers(h,this,sd)), 
+                                            requestBody = (fun data -> (body(data, svr,sd))), 
+                                            requestEnded = (fun req -> (requestEnd(req, svr, sd))))
+        HttpParser(parserDelegate)
+
+    let onReceive (data, svr, sd) =
+        let parser = parserCache.AddOrUpdate(sd.RemoteEndPoint, createParser svr sd, fun _ value -> value)
+        parser.Execute(new ArraySegment<_>(data)) |> ignore
+
+    let onDisconnect endPoint =
+        let removed, parser = parserCache.TryRemove(endPoint)
+        if removed then
+            parser.Execute(ArraySegment<_>()) |> ignore
+
+    let svr = TcpServer.Create(received = onReceive, disconnected = onDisconnect)
+
     member h.Start(port) = svr.Listen(IPAddress.Loopback, port)
 
     member h.Send(client, (response:string), keepAlive) = 
