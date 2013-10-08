@@ -26,7 +26,6 @@ let debug (x:UnhandledExceptionEventArgs) =
     Console.ReadLine() |> ignore
 
 System.AppDomain.CurrentDomain.UnhandledException |> Observable.add debug
-let shortdate = DateTime.UtcNow.ToShortDateString
 
 let server = new HttpServer (fun env -> async {
     let context = Microsoft.Owin.OwinContext(env)
@@ -39,5 +38,6 @@ let server = new HttpServer (fun env -> async {
 })
 
 server.Start(6667)
-printfn "Http Server started on port 6667"
+Console.WriteLine "Http Server started on port 6667"
 Console.ReadKey() |> ignore
+server.Dispose()
