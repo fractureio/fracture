@@ -29,11 +29,13 @@ System.AppDomain.CurrentDomain.UnhandledException |> Observable.add debug
 let shortdate = DateTime.UtcNow.ToShortDateString
 
 let server = new HttpServer (fun env -> async {
-    env.ResponseStatusCode <- 200
-    env.ResponseHeaders.Add("Content-Type", [|"text/plain"|])
-    env.ResponseHeaders.Add("Content-Length", [| "13" |])
-    env.ResponseHeaders.Add("Server", [| "Fracture" |])
-    do! env.ResponseBody.AsyncWrite("Hello, world!"B, 0, 13)
+    let context = Microsoft.Owin.OwinContext(env)
+    let response = context.Response
+    response.StatusCode <- 200
+    response.Headers.Add("Content-Type", [|"text/plain"|])
+    response.Headers.Add("Content-Length", [| "13" |])
+    response.Headers.Add("Server", [| "Fracture" |])
+    response.Write("Hello, world!"B)
 })
 
 server.Start(6667)

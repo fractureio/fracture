@@ -32,7 +32,7 @@ open HttpMachine
 open Owin
 
 [<Sealed>]
-type HttpServer(app) as this = 
+type HttpServer(app) =
     let parserCache = new ConcurrentDictionary<_,HttpParser>()
     let tcp = new TcpServer()
     let send client keepAlive data = tcp.Send(client, data, keepAlive)
@@ -51,6 +51,13 @@ type HttpServer(app) as this =
             let removed, parser = parserCache.TryRemove(sd.RemoteEndPoint)
             if removed then
                 parser.Execute(ArraySegment<_>()) |> ignore)
+
+    new (app: Func<_,Task>) =
+        let inner env = async {
+            let _ = Async.AwaitIAsyncResult(app.Invoke env)
+            return ()
+        }
+        new HttpServer(inner)
         
     member this.Start(port) =
         tcp.Listen(IPAddress.Loopback, port)

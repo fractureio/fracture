@@ -21,6 +21,7 @@ open System
 open System.Collections.Concurrent
 open System.Collections.Generic
 open System.IO
+open System.Linq
 open System.Threading
 open System.Threading.Tasks
 open Microsoft.FSharp.Core
@@ -154,42 +155,16 @@ module Constants =
         let [<Literal>] clientCloseDescription = "websocket.ClientCloseDescription"
 
 /// An Environment dictionary to store OWIN request and response values.
-type Environment() as x =
-    inherit Dictionary<string, obj>(StringComparer.Ordinal)
-
-    (* Set environment settings *)
-
-    // Set a per-request cancellation token
-    // TODO: Determine if this can use the token from the Async block.
-    let cts = new CancellationTokenSource()
-    do x.Add(Constants.callCancelled, cts.Token)
-
-    do x.Add(Constants.owinVersion, "1.0")
-
-    (* Set request defaults *)
-
-    // Add the request headers dictionary
-    let requestHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
-    do x.Add(Constants.requestHeaders, requestHeaders)
-
-    let requestBody = new MemoryStream()
-    do x.Add(Constants.requestBody, requestBody)
-
-    (* Set response defaults *)
-    do x.Add(Constants.responseStatusCode, 200)
-
-    // Add the response headers dictionary
-    let responseHeaders = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
-    do x.Add(Constants.responseHeaders, responseHeaders)
-
-    let responseBody = new MemoryStream()
-    do x.Add(Constants.responseBody, responseBody)
+type Environment(dictionary: IDictionary<_,_>) =
+    inherit Dictionary<string, obj>(dictionary, StringComparer.Ordinal)
 
     /// Gets the request headers dictionary for the current request.
-    member x.RequestHeaders = requestHeaders
+    abstract RequestHeaders : IDictionary<string, string[]>
+    default x.RequestHeaders = unbox x.[Constants.requestHeaders]
 
     /// Gets the request body for the current request.
-    member x.RequestBody = requestBody
+    abstract RequestBody : Stream
+    default x.RequestBody = unbox x.[Constants.requestBody]
 
     /// Gets the response status code for the current request.
     member x.ResponseStatusCode
@@ -197,19 +172,19 @@ type Environment() as x =
         and set(v : int) = x.[Constants.responseStatusCode] <- v
 
     /// Gets the response headers dictionary for the current response.
-    member x.ResponseHeaders = responseHeaders
+    abstract ResponseHeaders : IDictionary<string, string[]>
+    default x.ResponseHeaders = unbox x.[Constants.responseHeaders]
 
     /// Gets the response body stream.
-    member x.ResponseBody = responseBody
+    abstract ResponseBody : Stream
+    default x.ResponseBody = unbox x.[Constants.responseBody]
 
-    member x.Dispose() =
+    abstract Dispose : unit -> unit
+    default x.Dispose() =
         GC.SuppressFinalize(x)
-        cts.Dispose()
-        responseBody.Dispose()
-        if x.ContainsKey(Constants.requestBody) then
-            let requestBody = x.[Constants.requestBody]
-            if requestBody <> null then
-                (requestBody :?> Stream).Dispose()
+        x.Values.OfType<IDisposable>()
+        |> Seq.filter (fun x -> x <> Unchecked.defaultof<_>)
+        |> Seq.iter (fun x -> try x.Dispose() with | _ -> ()) // TODO: Log any failed disposals.
 
     interface IDisposable with
         member x.Dispose() = x.Dispose()
