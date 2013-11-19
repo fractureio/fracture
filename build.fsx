@@ -52,12 +52,10 @@ let nunitPath = "./packages/NUnit.Runners.2.6.2/tools"
 
 // files
 let appReferences =
-    !+ "src/**/*.fsproj"
-        |> Scan
+    !! "src/**/*.fsproj"
 
 let testReferences =
-    !+ "tests/**/*.fsproj"
-        |> Scan
+    !! "tests/**/*.fsproj"
 
 // targets
 Target "Clean" (fun _ ->
@@ -99,8 +97,7 @@ Target "BuildTest" (fun _ ->
 
 Target "Test" (fun _ ->
     let nunitOutput = testDir @@ "TestResults.xml"
-    !+ (testDir @@ "*.Tests.dll")
-        |> Scan
+    !! (testDir @@ "*.Tests.dll")
         |> NUnit (fun p ->
                     {p with
                         ToolPath = nunitPath
@@ -118,18 +115,18 @@ Target "CreateFractureNuGet" (fun _ ->
         |> CopyTo nugetFractureLib
 
     NuGet (fun p -> 
-        {p with               
-            Authors = authors
-            Project = projectName
-            Description = projectDescription
-            Version = version
-            OutputPath = nugetFractureDir
-            ToolPath = nugetPath
-            AccessKey = getBuildParamOrDefault "nugetkey" ""
-            Publish = hasBuildParam "nugetKey" })
+            {p with               
+                Authors = authors
+                Project = projectName
+                Description = projectDescription
+                Version = version
+                OutputPath = nugetFractureDir
+                ToolPath = nugetPath
+                AccessKey = getBuildParamOrDefault "nugetkey" ""
+                Publish = hasBuildParam "nugetKey" })
         "fracture.nuspec"
 
-    !! (nugetDir @@ sprintf "Fracture.%s.nupkg" version)
+    !! (nugetFractureDir @@ sprintf "Fracture.%s.nupkg" version)
         |> CopyTo deployDir
 )
 
@@ -141,20 +138,20 @@ Target "CreateFractureHttpNuGet" (fun _ ->
     let httpMachineVersion = GetPackageVersion packagesDir "HttpMachine"
 
     NuGet (fun p -> 
-        {p with               
-            Authors = authors
-            Project = "Fracture.Http"
-            Description = projectDescription
-            Version = version
-            OutputPath = nugetFractureHttpDir
-            ToolPath = nugetPath
-            Dependencies = ["Fracture", version
-                            "HttpMachine", httpMachineVersion]
-            AccessKey = getBuildParamOrDefault "nugetkey" ""
-            Publish = hasBuildParam "nugetKey" })
+            {p with               
+                Authors = authors
+                Project = "Fracture.Http"
+                Description = projectDescription
+                Version = version
+                OutputPath = nugetFractureHttpDir
+                ToolPath = nugetPath
+                Dependencies = ["Fracture", version
+                                "HttpMachine", httpMachineVersion]
+                AccessKey = getBuildParamOrDefault "nugetkey" ""
+                Publish = hasBuildParam "nugetKey" })
         "fracture.nuspec"
 
-    !! (nugetDir @@ sprintf "Fracture.Http.%s.nupkg" version)
+    !! (nugetFractureHttpDir @@ sprintf "Fracture.Http.%s.nupkg" version)
         |> CopyTo deployDir
 )
 
