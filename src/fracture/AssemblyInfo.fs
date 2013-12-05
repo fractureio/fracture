@@ -24,9 +24,9 @@ exception ReturnNoneException183c26a427ae489c8fd92ec21a0c9a59
 
 [<assembly: AssemblyProduct ("Fracture is an F# based socket implementation for high-speed, high-throughput applications.")>]
 
-[<assembly: AssemblyVersion ("0.1.20120725")>]
+[<assembly: AssemblyVersion ("0.1.120731")>]
 
-[<assembly: AssemblyFileVersion ("0.1.20120725")>]
+[<assembly: AssemblyFileVersion ("0.1.120731")>]
 
 [<assembly: AssemblyDelaySign (false)>]
 

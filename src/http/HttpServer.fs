@@ -27,45 +27,47 @@ open System.Text
 open System.Threading.Tasks
 open Fracture
 open Fracture.Common
+open Fracture.Pipelets
 open HttpMachine
+open Owin
 
-type HttpServer(headers, body, requestEnd) as this = 
-    let mutable disposed = false
+[<Sealed>]
+type HttpServer(app) =
     let parserCache = new ConcurrentDictionary<_,HttpParser>()
-
-    let createParser svr sd =
-        let parserDelegate = ParserDelegate(onHeaders = (fun h -> headers(h,this,sd)), 
-                                            requestBody = (fun data -> (body(data, svr,sd))), 
-                                            requestEnded = (fun req -> (requestEnd(req, svr, sd))))
+    let tcp = new TcpServer()
+    let send client keepAlive data = tcp.Send(client, data, keepAlive)
+        
+    let createParser sd =
+        let parserDelegate = ParserDelegate(app, send sd.RemoteEndPoint)
         HttpParser(parserDelegate)
 
-    let onReceive (data, svr, sd) =
-        let parser = parserCache.AddOrUpdate(sd.RemoteEndPoint, createParser svr sd, fun _ value -> value)
-        parser.Execute(new ArraySegment<_>(data)) |> ignore
+    let receivedSubscription =
+        tcp.OnReceived.Subscribe(fun (_, (data, sd)) -> 
+            let parser = parserCache.AddOrUpdate(sd.RemoteEndPoint, createParser sd, fun _ value -> value)
+            parser.Execute(new ArraySegment<_>(data)) |> ignore)
 
-    let onDisconnect endPoint =
-        let removed, parser = parserCache.TryRemove(endPoint)
-        if removed then
-            parser.Execute(ArraySegment<_>()) |> ignore
+    let disconnectSubscription =
+        tcp.OnDisconnected.Subscribe(fun (_, sd) ->
+            let removed, parser = parserCache.TryRemove(sd.RemoteEndPoint)
+            if removed then
+                parser.Execute(ArraySegment<_>()) |> ignore)
 
-    let svr = TcpServer.Create(received = onReceive, disconnected = onDisconnect)
+    new (app: Func<_,Task>) =
+        let inner env = async {
+            let _ = Async.AwaitIAsyncResult(app.Invoke env)
+            return ()
+        }
+        new HttpServer(inner)
+        
+    member this.Start(port) =
+        tcp.Listen(IPAddress.Loopback, port)
 
-    member h.Start(port) = svr.Listen(IPAddress.Loopback, port)
-
-    member h.Send(client, (response:string), keepAlive) = 
-        let encoded = Encoding.ASCII.GetBytes(response)
-        svr.Send(client, encoded, keepAlive)
-
-    //ensures the listening socket is shutdown on disposal.
-    member private x.Dispose(disposing) = 
-        if not disposed then
-            if disposing && svr <> Unchecked.defaultof<TcpServer> then
-                svr.Dispose()
-            disposed <- true
-
-    member h.Dispose() =
-        h.Dispose(true)
+    /// Ensures the listening socket is shutdown on disposal.
+    member this.Dispose() =
+        receivedSubscription.Dispose()
+        disconnectSubscription.Dispose()
+        tcp.Dispose()
         GC.SuppressFinalize(this)
 
     interface IDisposable with
-        member h.Dispose() = h.Dispose()
+        member this.Dispose() = this.Dispose()

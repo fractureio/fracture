@@ -1,12 +1,29 @@
-#I "./packages/FAKE.1.64.6/tools"
-#r "FakeLib.dll"
-
+#if BOOT
 open Fake
+module FB = Fake.Boot
+FB.Prepare {
+    FB.Config.Default __SOURCE_DIRECTORY__ with
+        NuGetDependencies =
+            let (!!) x = FB.NuGetDependency.Create x
+            [
+                !!"FAKE"
+                !!"NuGet.Build"
+                !!"NuGet.Core"
+                !!"NUnit.Runners"
+            ]
+}
+#endif
+
+#load ".build/boot.fsx"
+
 open System.IO
+open Fake 
+open Fake.AssemblyInfoFile
+open Fake.MSBuild
 
 // properties
 let projectName = "Fracture"
-let version = if isLocalBuild then "0.1." + System.DateTime.UtcNow.ToString("yMMdd") else buildVersion
+let version = if isLocalBuild then "0.2." + System.DateTime.UtcNow.ToString("yMMdd") else buildVersion
 let projectSummary = "Fracture is an F# based socket implementation for high-speed, high-throughput applications."
 let projectDescription = "Fracture is an F# based socket implementation for high-speed, high-throughput applications. It is built on top of SocketAsyncEventArgs, which minimises the memory fragmentation common in the IAsyncResult pattern."
 let authors = ["Dave Thomas";"Ryan Riley"]
@@ -15,65 +32,59 @@ let homepage = "http://github.com/fractureio/fracture"
 let license = "http://github.com/fractureio/fracture/raw/master/LICENSE.txt"
 
 // directories
-let buildDir = "./build/"
-let packagesDir = "./packages/"
-let testDir = "./test/"
-let deployDir = "./deploy/"
-let docsDir = "./docs/"
-
-let targetPlatformDir = getTargetPlatformDir "4.0.30319"
-
-let nugetDir = "./nuget/"
-let nugetLibDir = nugetDir @@ "lib/net40"
-let nugetDocsDir = nugetDir @@ "docs"
-
-let httpMachineVersion = GetPackageVersion packagesDir "HttpMachine"
-
-// params
-let target = getBuildParamOrDefault "target" "All"
+let buildDir = __SOURCE_DIRECTORY__ @@ "build"
+let deployDir = __SOURCE_DIRECTORY__ @@ "deploy"
+let packagesDir = __SOURCE_DIRECTORY__ @@ "packages"
+let testDir = __SOURCE_DIRECTORY__ @@ "test"
+let nugetDir = __SOURCE_DIRECTORY__ @@ "nuget"
+let nugetFractureDir = nugetDir @@ "Fracture"
+let nugetFractureHttpDir = nugetDir @@ "Fracture.Http"
+let nugetFractureLib = nugetFractureDir @@ "lib/net40"
+let nugetFractureHttpLib = nugetFractureHttpDir @@ "lib/net40"
+let template = __SOURCE_DIRECTORY__ @@ "template.html"
+let sources = __SOURCE_DIRECTORY__ @@ "src"
+let docsDir = __SOURCE_DIRECTORY__ @@ "docs"
+let docRoot = getBuildParamOrDefault "docroot" homepage
 
 // tools
-let fakePath = "./packages/FAKE.1.64.6/tools"
-let nugetPath = "./lib/Nuget/nuget.exe"
-let nunitPath = "./packages/NUnit.Runners.2.6.0.12051/tools"
+let nugetPath = "./.nuget/nuget.exe"
+let nunitPath = "./packages/NUnit.Runners.2.6.2/tools"
 
 // files
 let appReferences =
-    !+ "./src/**/*.fsproj"
-        |> Scan
+    !! "src/**/*.fsproj"
 
 let testReferences =
-    !+ "./tests/**/*.fsproj"
-      |> Scan
-
-let filesToZip =
-    !+ (buildDir + "/**/*.*")
-        -- "*.zip"
-        |> Scan
+    !! "tests/**/*.fsproj"
 
 // targets
 Target "Clean" (fun _ ->
-    CleanDirs [buildDir; testDir; deployDir; docsDir]
+    CleanDirs [buildDir
+               docsDir
+               testDir
+               deployDir
+               nugetDir
+               nugetFractureDir
+               nugetFractureLib
+               nugetFractureHttpDir
+               nugetFractureHttpLib]
 )
 
 Target "BuildApp" (fun _ ->
-    AssemblyInfo (fun p ->
-        {p with 
-            CodeLanguage = FSharp
-            AssemblyVersion = version
-            AssemblyTitle = projectSummary
-            AssemblyDescription = projectDescription
-            Guid = "020697d7-24a3-4ce4-a326-d2c7c204ffde"
-            OutputFileName = "./src/fracture/AssemblyInfo.fs" })
+    if not isLocalBuild then
+        [ Attribute.Version(buildVersion)
+          Attribute.Title(projectName)
+          Attribute.Description(projectDescription)
+          Attribute.Guid("020697d7-24a3-4ce4-a326-d2c7c204ffde")
+        ]
+        |> CreateFSharpAssemblyInfo "src/fracture/AssemblyInfo.fs"
 
-    AssemblyInfo (fun p ->
-        {p with 
-            CodeLanguage = FSharp
-            AssemblyVersion = version
-            AssemblyTitle = "Fracture.Http"
-            AssemblyDescription = "An HTTP and URI parser combinator library."
-            Guid = "13571762-E1C9-492A-9141-37AA0094759A"
-            OutputFileName = "./src/http/AssemblyInfo.fs" })
+        [ Attribute.Version(buildVersion)
+          Attribute.Title("Fracture.Http")
+          Attribute.Description(projectDescription)
+          Attribute.Guid("13571762-E1C9-492A-9141-37AA0094759A")
+        ]
+        |> CreateFSharpAssemblyInfo "src/http/AssemblyInfo.fs"
 
     MSBuildRelease buildDir "Build" appReferences
         |> Log "AppBuild-Output: "
@@ -85,81 +96,82 @@ Target "BuildTest" (fun _ ->
 )
 
 Target "Test" (fun _ ->
-    !+ (testDir + "/*.Tests.dll")
-        |> Scan
+    let nunitOutput = testDir @@ "TestResults.xml"
+    !! (testDir @@ "*.Tests.dll")
         |> NUnit (fun p ->
-            {p with
-                ToolPath = nunitPath
-                DisableShadowCopy = true
-                OutputFile = testDir + "TestResults.xml" })
-)
-
-Target "GenerateDocumentation" (fun _ ->
-    !+ (buildDir + "*.dll")
-        |> Scan
-        |> Docu (fun p ->
-            {p with
-                ToolPath = fakePath + "/docu.exe"
-                TemplatesPath = "./lib/templates"
-                OutputPath = docsDir })
+                    {p with
+                        ToolPath = nunitPath
+                        DisableShadowCopy = true
+                        OutputFile = nunitOutput })
 )
 
 Target "CopyLicense" (fun _ ->
     [ "LICENSE.txt" ] |> CopyTo buildDir
 )
 
-Target "ZipDocumentation" (fun _ ->
-    !+ (docsDir + "/**/*.*")
-        |> Scan
-        |> Zip docsDir (deployDir + sprintf "Documentation-%s.zip" version)
-)
-
-Target "BuildNuGet" (fun _ ->
-    CleanDirs [nugetDir; nugetLibDir; nugetDocsDir]
-
-    XCopy (docsDir |> FullName) nugetDocsDir
-    [ buildDir + "Fracture.dll"
-      buildDir + "Fracture.pdb"
-      buildDir + "Fracture.Http.dll"
-      buildDir + "Fracture.Http.pdb" ]
-        |> CopyTo nugetLibDir
+Target "CreateFractureNuGet" (fun _ ->
+    [ buildDir @@ "Fracture.dll"
+      buildDir @@ "Fracture.pdb" ]
+        |> CopyTo nugetFractureLib
 
     NuGet (fun p -> 
-        {p with               
-            Authors = authors
-            Project = projectName
-            Description = projectDescription
-            Version = version
-            OutputPath = nugetDir
-            Dependencies = ["HttpMachine",RequireExactly httpMachineVersion]
-            AccessKey = getBuildParamOrDefault "nugetkey" ""
-            ToolPath = nugetPath
-            Publish = hasBuildParam "nugetKey" })
+            {p with               
+                Authors = authors
+                Project = projectName
+                Description = projectDescription
+                Version = version
+                OutputPath = nugetFractureDir
+                ToolPath = nugetPath
+                AccessKey = getBuildParamOrDefault "nugetkey" ""
+                Publish = hasBuildParam "nugetKey" })
         "fracture.nuspec"
 
-    [nugetDir + sprintf "Fracture.%s.nupkg" version]
+    !! (nugetFractureDir @@ sprintf "Fracture.%s.nupkg" version)
         |> CopyTo deployDir
 )
 
-Target "Deploy" (fun _ ->
-    !+ (buildDir + "/**/*.*")
-        -- "*.zip"
-        |> Scan
-        |> Zip buildDir (deployDir + sprintf "%s-%s.zip" projectName version)
+Target "CreateFractureHttpNuGet" (fun _ ->
+    [ buildDir @@ "Fracture.Http.dll"
+      buildDir @@ "Fracture.Http.pdb" ]
+        |> CopyTo nugetFractureHttpLib
+
+    let httpMachineVersion = GetPackageVersion packagesDir "HttpMachine"
+
+    NuGet (fun p -> 
+            {p with               
+                Authors = authors
+                Project = "Fracture.Http"
+                Description = projectDescription
+                Version = version
+                OutputPath = nugetFractureHttpDir
+                ToolPath = nugetPath
+                Dependencies = ["Fracture", version
+                                "HttpMachine", httpMachineVersion]
+                AccessKey = getBuildParamOrDefault "nugetkey" ""
+                Publish = hasBuildParam "nugetKey" })
+        "fracture.nuspec"
+
+    !! (nugetFractureHttpDir @@ sprintf "Fracture.Http.%s.nupkg" version)
+        |> CopyTo deployDir
 )
 
-Target "All" DoNothing
+FinalTarget "CloseTestRunner" (fun _ ->
+    ProcessHelper.killProcess "nunit-agent.exe"
+)
+
+Target "Deploy" DoNothing
+Target "Default" DoNothing
 
 // Build order
 "Clean"
   ==> "BuildApp" <=> "BuildTest" <=> "CopyLicense"
-  ==> "Test" <=> "GenerateDocumentation"
-  ==> "ZipDocumentation"
-  ==> "BuildNuGet"
+  ==> "Test"
+  ==> "CreateFractureNuGet"
+  ==> "CreateFractureHttpNuGet"
   ==> "Deploy"
 
-"All" <== ["Deploy"]
+"Default" <== ["Deploy"]
 
 // Start build
-Run target
+RunTargetOrDefault "Default"
 

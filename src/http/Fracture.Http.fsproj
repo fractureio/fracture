@@ -36,7 +36,9 @@
   </PropertyGroup>
   <Import Project="..\..\lib\FSharp\v4.0\bin\Microsoft.FSharp.Targets" />
   <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
+  <Import Project="../../.nuget/BuildMagic.targets" />
   <ItemGroup>
+    <Compile Include="Owin.fs" />
     <Compile Include="HttpParser.fs" />
     <Compile Include="HttpServer.fs" />
     <None Include="packages.config" />
@@ -60,7 +62,6 @@
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
-  <Import Project="../../.nuget/BuildMagic.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
 	     Other similar extension points exist, see Microsoft.Common.targets.
 	<Target Name="BeforeBuild">
