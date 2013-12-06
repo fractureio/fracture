@@ -23,7 +23,7 @@ open Fake.MSBuild
 
 // properties
 let projectName = "Fracture"
-let version = if isLocalBuild then "0.2." + System.DateTime.UtcNow.ToString("yMMdd") else buildVersion
+let version = if isLocalBuild then "0.9." + System.DateTime.UtcNow.ToString("yMMdd") else buildVersion
 let projectSummary = "Fracture is an F# based socket implementation for high-speed, high-throughput applications."
 let projectDescription = "Fracture is an F# based socket implementation for high-speed, high-throughput applications. It is built on top of SocketAsyncEventArgs, which minimises the memory fragmentation common in the IAsyncResult pattern."
 let authors = ["Dave Thomas";"Ryan Riley"]
