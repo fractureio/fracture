@@ -15,7 +15,7 @@
          DependsOnTargets="InstallNuGet"
          Condition="!Exists('$(FakeTemp)')">
    <MakeDir Directories=".build" />
-   <Exec Command='"$(Root)/.nuget/nuget.exe" install FAKE -Pre -out .build'
+   <Exec Command='"$(Root)/.nuget/nuget.exe" install FAKE -out .build'
          WorkingDirectory="$(Root)"
          LogStandardErrorAsError="true"/>
    <ItemGroup>
