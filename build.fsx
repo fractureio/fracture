@@ -37,10 +37,7 @@ let deployDir = __SOURCE_DIRECTORY__ @@ "deploy"
 let packagesDir = __SOURCE_DIRECTORY__ @@ "packages"
 let testDir = __SOURCE_DIRECTORY__ @@ "test"
 let nugetDir = __SOURCE_DIRECTORY__ @@ "nuget"
-let nugetFractureDir = nugetDir @@ "Fracture"
-let nugetFractureHttpDir = nugetDir @@ "Fracture.Http"
-let nugetFractureLib = nugetFractureDir @@ "lib/net40"
-let nugetFractureHttpLib = nugetFractureHttpDir @@ "lib/net40"
+let nugetLib = nugetDir @@ "lib/net40"
 let template = __SOURCE_DIRECTORY__ @@ "template.html"
 let sources = __SOURCE_DIRECTORY__ @@ "src"
 let docsDir = __SOURCE_DIRECTORY__ @@ "docs"
@@ -64,10 +61,7 @@ Target "Clean" (fun _ ->
                testDir
                deployDir
                nugetDir
-               nugetFractureDir
-               nugetFractureLib
-               nugetFractureHttpDir
-               nugetFractureHttpLib]
+               nugetLib]
 )
 
 Target "BuildApp" (fun _ ->
@@ -78,13 +72,6 @@ Target "BuildApp" (fun _ ->
           Attribute.Guid("020697d7-24a3-4ce4-a326-d2c7c204ffde")
         ]
         |> CreateFSharpAssemblyInfo "src/fracture/AssemblyInfo.fs"
-
-        [ Attribute.Version(buildVersion)
-          Attribute.Title("Fracture.Http")
-          Attribute.Description(projectDescription)
-          Attribute.Guid("13571762-E1C9-492A-9141-37AA0094759A")
-        ]
-        |> CreateFSharpAssemblyInfo "src/http/AssemblyInfo.fs"
 
     MSBuildRelease buildDir "Build" appReferences
         |> Log "AppBuild-Output: "
@@ -109,10 +96,10 @@ Target "CopyLicense" (fun _ ->
     [ "LICENSE.txt" ] |> CopyTo buildDir
 )
 
-Target "CreateFractureNuGet" (fun _ ->
+Target "CreateNuGet" (fun _ ->
     [ buildDir @@ "Fracture.dll"
       buildDir @@ "Fracture.pdb" ]
-        |> CopyTo nugetFractureLib
+        |> CopyTo nugetLib
 
     NuGet (fun p -> 
             {p with               
@@ -120,38 +107,13 @@ Target "CreateFractureNuGet" (fun _ ->
                 Project = projectName
                 Description = projectDescription
                 Version = version
-                OutputPath = nugetFractureDir
+                OutputPath = nugetDir
                 ToolPath = nugetPath
                 AccessKey = getBuildParamOrDefault "nugetkey" ""
                 Publish = hasBuildParam "nugetKey" })
         "fracture.nuspec"
 
-    !! (nugetFractureDir @@ sprintf "Fracture.%s.nupkg" version)
-        |> CopyTo deployDir
-)
-
-Target "CreateFractureHttpNuGet" (fun _ ->
-    [ buildDir @@ "Fracture.Http.dll"
-      buildDir @@ "Fracture.Http.pdb" ]
-        |> CopyTo nugetFractureHttpLib
-
-    let httpMachineVersion = GetPackageVersion packagesDir "HttpMachine"
-
-    NuGet (fun p -> 
-            {p with               
-                Authors = authors
-                Project = "Fracture.Http"
-                Description = projectDescription
-                Version = version
-                OutputPath = nugetFractureHttpDir
-                ToolPath = nugetPath
-                Dependencies = ["Fracture", version
-                                "HttpMachine", httpMachineVersion]
-                AccessKey = getBuildParamOrDefault "nugetkey" ""
-                Publish = hasBuildParam "nugetKey" })
-        "fracture.nuspec"
-
-    !! (nugetFractureHttpDir @@ sprintf "Fracture.Http.%s.nupkg" version)
+    !! (nugetDir @@ sprintf "Fracture.%s.nupkg" version)
         |> CopyTo deployDir
 )
 
@@ -166,12 +128,10 @@ Target "Default" DoNothing
 "Clean"
   ==> "BuildApp" <=> "BuildTest" <=> "CopyLicense"
   ==> "Test"
-  ==> "CreateFractureNuGet"
-  ==> "CreateFractureHttpNuGet"
+  ==> "CreateNuGet"
   ==> "Deploy"
 
 "Default" <== ["Deploy"]
 
 // Start build
 RunTargetOrDefault "Default"
-
